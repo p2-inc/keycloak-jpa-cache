@@ -1,0 +1,64 @@
+/*
+ * Copyright 2022 IT-Systemhaus der Bundesagentur fuer Arbeit
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.phasetwo.keycloak.jpacache.userSession.persistence;
+
+import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.AuthenticatedClientSessionValue;
+import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.UserSession;
+import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.UserSessionToAttributeMapping;
+import org.keycloak.common.util.MultivaluedHashMap;
+
+import java.util.List;
+import java.util.Set;
+
+public interface UserSessionRepository {
+    void insert(UserSession session);
+
+    void update(UserSession session);
+
+    void insert(UserSession session, String correspondingSessionId);
+    void update(UserSession session, String correspondingSessionId);
+
+    void addClientSession(UserSession session, AuthenticatedClientSessionValue clientSession);
+
+    UserSession findUserSessionById(String id);
+
+    List<UserSession> findAll();
+
+    List<UserSession> findUserSessionsByBrokerSession(String brokerSessionId);
+
+    List<UserSession> findUserSessionsByUserId(String userId);
+
+    List<UserSession> findUserSessionsByClientId(String clientId);
+
+    List<UserSession> findUserSessionsByBrokerUserId(String brokerUserId);
+
+    void deleteUserSession(UserSession session);
+
+    void deleteUserSession(String id);
+
+    void deleteCorrespondingUserSession(UserSession session);
+
+    // Attributes
+    Set<String> findUserSessionIdsByAttribute(String name, String value, int firstResult, int maxResult);
+
+    List<UserSession> findUserSessionsByAttribute(String name, String value);
+
+    UserSession findUserSessionByAttribute(String name, String value);
+
+    MultivaluedHashMap<String, String> findAllUserSessionAttributes(String userSessionId);
+
+    UserSessionToAttributeMapping findUserSessionAttribute(String userSessionId, String attributeName);
+}
