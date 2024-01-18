@@ -12,15 +12,15 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
-
+import jakarta.persistence.EntityManager;
 import static org.keycloak.common.util.StackUtil.getShortStackTrace;
 
 @JBossLog
 @RequiredArgsConstructor
 public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider {
   private static final String EMPTY_NOTE = "internal.emptyNote";
-
-  private final SingleUseObjectRepository repository;
+  private final KeycloakSession session;
+  private final EntityManager entityManager;
 
   @Override
   public void put(String key, long lifespanSeconds, Map<String, String> notes) {

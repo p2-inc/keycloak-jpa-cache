@@ -1,6 +1,18 @@
 <?xml version="1.1" encoding="UTF-8" standalone="no"?>
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.5.xsd">
-  <changeSet author="xgp" id="20240117-001">
+
+  <changeSet author="xgp" id="20240117-101">
+    <createTable tableName="CACHE_ROOT_AUTH_SESSION">
+      <column name="ID" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="REALM_ID" type="VARCHAR(36)"/>
+      <column name="EXPIRATION" type="TIMESTAMP"/>
+      <column name="TIMESTAMP" type="INT"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet author="xgp" id="20240117-201">
     <createTable tableName="CACHE_AUTH_SESSION">
       <column name="ID" type="VARCHAR(36)">
         <constraints nullable="false"/>
@@ -14,17 +26,83 @@
       <column name="USER_ID" type="VARCHAR(36)"/>
       <column name="TIMESTAMP" type="TIMESTAMP"/>
     </createTable>
+    <addForeignKeyConstraint baseColumnNames="PARENT_SESSION_ID" baseTableName="CACHE_AUTH_SESSION" constraintName="FK_R759UN93RZMCMVVORYMX" referencedColumnNames="ID" referencedTableName="CACHE_ROOT_AUTH_SESSION" onDelete="CASCADE" />
   </changeSet>
 
-  <changeSet author="xgp" id="20240117-101">
-    <createTable tableName="CACHE_ROOT_AUTH_SESSION">
-      <column name="ID" type="VARCHAR(36)">
+  <changeSet author="xgp" id="20240117-202">
+    <createTable tableName="CACHE_AUTH_SESSION_AUTH_NOTE">
+      <column name="AUTH_SESSION_ID" type="VARCHAR(36)">
         <constraints nullable="false"/>
       </column>
-      <column name="REALM_ID" type="VARCHAR(36)"/>
-      <column name="EXPIRATION" type="TIMESTAMP"/>
-      <column name="TIMESTAMP" type="INT"/>
+      <column name="NAME" type="VARCHAR(1024)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="VALUE" type="CLOB"/>
     </createTable>
+    <addForeignKeyConstraint baseColumnNames="AUTH_SESSION_ID" baseTableName="CACHE_AUTH_SESSION_AUTH_NOTE" constraintName="FK_RPNHP73T960DTGJIW5KW" referencedColumnNames="ID" referencedTableName="CACHE_AUTH_SESSION" onDelete="CASCADE" />
+  </changeSet>
+
+  <changeSet author="xgp" id="20240117-203">
+    <createTable tableName="CACHE_AUTH_SESSION_CLIENT_NOTE">
+      <column name="AUTH_SESSION_ID" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="NAME" type="VARCHAR(1024)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="VALUE" type="CLOB"/>
+    </createTable>
+    <addForeignKeyConstraint baseColumnNames="AUTH_SESSION_ID" baseTableName="CACHE_AUTH_SESSION_CLIENT_NOTE" constraintName="FK_T8XDT2CC5XBGURAR2X34" referencedColumnNames="ID" referencedTableName="CACHE_AUTH_SESSION" onDelete="CASCADE" />
+  </changeSet>
+
+  <changeSet author="xgp" id="20240117-204">
+    <createTable tableName="CACHE_AUTH_SESSION_USER_NOTE">
+      <column name="AUTH_SESSION_ID" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="NAME" type="VARCHAR(1024)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="VALUE" type="CLOB"/>
+    </createTable>
+    <addForeignKeyConstraint baseColumnNames="AUTH_SESSION_ID" baseTableName="CACHE_AUTH_SESSION_USER_NOTE" constraintName="FK_C95MFHFUTEZVLJFIT5AC" referencedColumnNames="ID" referencedTableName="CACHE_AUTH_SESSION" onDelete="CASCADE" />
+  </changeSet>
+
+  <changeSet author="xgp" id="20240117-205">
+    <createTable tableName="CACHE_AUTH_SESSION_EXECUTION_STATUS">
+      <column name="AUTH_SESSION_ID" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="NAME" type="VARCHAR(1024)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="STATUS" type="VARCHAR(36)"/>
+    </createTable>
+    <addForeignKeyConstraint baseColumnNames="AUTH_SESSION_ID" baseTableName="CACHE_AUTH_SESSION_EXECUTION_STATUS" constraintName="FK_K177NIEMLQT1PADABF2L" referencedColumnNames="ID" referencedTableName="CACHE_AUTH_SESSION" onDelete="CASCADE" />
+  </changeSet>
+
+  <changeSet author="xgp" id="20240117-206">
+    <createTable tableName="CACHE_AUTH_SESSION_CLIENT_SCOPE">
+      <column name="AUTH_SESSION_ID" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="CLIENT_SCOPE" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <addForeignKeyConstraint baseColumnNames="AUTH_SESSION_ID" baseTableName="CACHE_AUTH_SESSION_CLIENT_SCOPE" constraintName="FK_PRRU3S0QWMH0PU7UWHIL" referencedColumnNames="ID" referencedTableName="CACHE_AUTH_SESSION" onDelete="CASCADE" />
+  </changeSet>  
+
+  <changeSet author="xgp" id="20240117-207">
+    <createTable tableName="CACHE_AUTH_SESSION_REQUIRED_ACTION">
+      <column name="AUTH_SESSION_ID" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="REQUIRED_ACTION" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <addForeignKeyConstraint baseColumnNames="AUTH_SESSION_ID" baseTableName="CACHE_AUTH_SESSION_REQUIRED_ACTION" constraintName="FK_IH6ZJJOWLOH31TUC1ACU" referencedColumnNames="ID" referencedTableName="CACHE_AUTH_SESSION" onDelete="CASCADE" />
   </changeSet>
 
   <changeSet author="xgp" id="20240117-501">
@@ -52,15 +130,21 @@
       <column name="EXPIRES_AT" type="TIMESTAMP"/>
     </createTable>
   </changeSet>
+  
   <changeSet author="xgp" id="20240117-602">
     <createTable tableName="CACHE_SINGLE_USE_OBJECT_NOTE">
       <column name="ID" type="VARCHAR(36)">
         <constraints nullable="false"/>
       </column>
-      <column name="SINGLE_USE_OBJECT_ID" type="VARCHAR(36)"/>
-      <column name="NAME" type="VARCHAR(1024)"/>
+      <column name="SINGLE_USE_OBJECT_ID" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="NAME" type="VARCHAR(1024)">
+        <constraints nullable="false"/>
+      </column>
       <column name="VALUE" type="CLOB"/>
     </createTable>
+    <addForeignKeyConstraint baseColumnNames="SINGLE_USE_OBJECT_ID" baseTableName="CACHE_SINGLE_USE_OBJECT_NOTE" constraintName="FK_L9YJH3VQREYYRAR2IZFT" referencedColumnNames="ID" referencedTableName="CACHE_SINGLE_USE_OBJECT" onDelete="CASCADE" />
   </changeSet>
 
   <!--
@@ -71,24 +155,6 @@ CREATE TABLE IF NOT EXISTS attributes_to_user_sessions (
     user_session_id text,
     PRIMARY KEY (attribute_name, attribute_value, user_session_id)
 ) WITH CLUSTERING ORDER BY (attribute_value ASC, user_session_id ASC);
-
-CREATE TABLE IF NOT EXISTS authentication_sessions (
-    parent_session_id text,
-    tab_id text,
-    action text,
-    client_id text,
-    protocol text,
-    redirect_uri text,
-    timestamp bigint,
-    user_id text,
-    auth_notes map<text, text>,
-    client_notes map<text, text>,
-    client_scopes set<text>,
-    execution_status map<text, text>,
-    required_actions set<text>,
-    user_notes map<text, text>,
-    PRIMARY KEY (parent_session_id, tab_id)
-) WITH CLUSTERING ORDER BY (tab_id ASC);
 
 CREATE TABLE IF NOT EXISTS user_sessions (
     id text PRIMARY KEY,

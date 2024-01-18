@@ -1,18 +1,3 @@
-/*
- * Copyright 2022 IT-Systemhaus der Bundesagentur fuer Arbeit
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.phasetwo.keycloak.jpacache.userSession;
 
 import io.phasetwo.keycloak.jpacache.transaction.CassandraModelTransaction;
@@ -27,13 +12,12 @@ import org.keycloak.device.DeviceActivityManager;
 import org.keycloak.models.*;
 import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import org.keycloak.models.utils.KeycloakModelUtils;
-
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
+import jakarta.persistence.EntityManager;
 import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setClientSessionExpiration;
 import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setUserSessionExpiration;
 import static org.keycloak.common.util.StackUtil.getShortStackTrace;
@@ -45,7 +29,7 @@ import static io.phasetwo.keycloak.mapstorage.common.ExpirationUtils.isExpired;
 @RequiredArgsConstructor
 public class JpaCacheUserSessionProvider implements UserSessionProvider {
     private final KeycloakSession session;
-    private final UserSessionRepository userSessionRepository;
+    private final EntityManager entityManager
 
     private final Map<String, UserSession> transientUserSessions = new HashMap<>();
     private final Map<String, JpaCacheUserSessionAdapter> sessionModels = new HashMap<>();

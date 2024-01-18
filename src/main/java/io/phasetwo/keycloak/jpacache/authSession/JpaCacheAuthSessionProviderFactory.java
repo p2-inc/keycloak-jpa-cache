@@ -7,8 +7,9 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.EnvironmentDependentProviderFactory;
 import org.keycloak.sessions.AuthenticationSessionProviderFactory;
+import org.keycloak.connections.jpa.JpaConnectionProvider;
+import jakarta.persistence.EntityManager;
 import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
-import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
 import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
 
 @AutoService(AuthenticationSessionProviderFactory.class)
@@ -21,8 +22,8 @@ public class JpaCacheAuthSessionProviderFactory implements AuthenticationSession
 
   @Override
   public JpaCacheAuthSessionProvider create(KeycloakSession session) {
-    JpaCacheProvider jpaCacheProvider = createProviderCached(session, JpaCacheProvider.class);
-    return new JpaCacheAuthSessionProvider(session, authSessionsLimit);
+    EntityManager em = session.getProvider(JpaConnectionProvider.class).getEntityManager();
+    return new JpaCacheAuthSessionProvider(session, em, authSessionsLimit);
   }
 
   @Override

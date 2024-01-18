@@ -11,11 +11,14 @@ import org.keycloak.models.UserLoginFailureProvider;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import java.util.function.Function;
 import java.util.Optional;
+import jakarta.persistence.EntityManager;
 import static org.keycloak.common.util.StackUtil.getShortStackTrace;
 
 @JBossLog
 @RequiredArgsConstructor
 public class JpaCacheLoginFailureProvider implements UserLoginFailureProvider {
+  private final KeycloakSession session;
+  private final EntityManager entityManager;
 
   private Function<LoginFailure, UserLoginFailureModel> entityToAdapterFunc(RealmModel realm) {
     return origEntity -> new JpaCacheLoginFailureAdapter(realm, origEntity);

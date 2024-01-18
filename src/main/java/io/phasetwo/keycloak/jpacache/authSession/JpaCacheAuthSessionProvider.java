@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import jakarta.persistence.EntityManager;
 import static org.keycloak.common.util.StackUtil.getShortStackTrace;
 import static io.phasetwo.keycloak.mapstorage.common.ExpirationUtils.isExpired;
 import static org.keycloak.models.utils.SessionExpiration.getAuthSessionLifespan;
@@ -29,8 +30,8 @@ import static org.keycloak.models.utils.SessionExpiration.getAuthSessionLifespan
 @RequiredArgsConstructor
 public class JpaCacheAuthSessionProvider implements AuthenticationSessionProvider {
   private final KeycloakSession session;
-  private final int authSessionsLimit;
   private final EntityManager entityManager;
+  private final int authSessionsLimit;
 
   private Map<String, JpaCacheRootAuthSessionAdapter> sessionModels = new HashMap<>();
 
