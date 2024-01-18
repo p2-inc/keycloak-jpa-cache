@@ -1,7 +1,6 @@
 package io.phasetwo.keycloak.jpacache.authSession;
 
 import com.google.auto.service.AutoService;
-import io.phasetwo.keycloak.jpacache.connection.JpaCacheProvider;
 import org.keycloak.Config;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;

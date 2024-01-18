@@ -4,6 +4,7 @@ import lombok.*;
 import jakarta.persistence.*;
 import java.util.Date;
 import io.phasetwo.keycloak.mapstorage.common.ExpirableEntity;
+import java.util.Map;
 
 @EqualsAndHashCode(of = "id")
 @Builder(toBuilder = true)

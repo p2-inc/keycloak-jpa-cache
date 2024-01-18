@@ -29,7 +29,7 @@ import static io.phasetwo.keycloak.mapstorage.common.ExpirationUtils.isExpired;
 @RequiredArgsConstructor
 public class JpaCacheUserSessionProvider implements UserSessionProvider {
     private final KeycloakSession session;
-    private final EntityManager entityManager
+  private final EntityManager entityManager;
 
     private final Map<String, UserSession> transientUserSessions = new HashMap<>();
     private final Map<String, JpaCacheUserSessionAdapter> sessionModels = new HashMap<>();

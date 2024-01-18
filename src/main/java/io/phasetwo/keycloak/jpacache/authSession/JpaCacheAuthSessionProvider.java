@@ -1,6 +1,5 @@
 package io.phasetwo.keycloak.jpacache.authSession;
 
-import io.phasetwo.keycloak.jpacache.authSession.persistence.AuthSessionRepository;
 import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.AuthenticationSession;
 import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.RootAuthenticationSession;
 import io.phasetwo.keycloak.jpacache.transaction.CassandraModelTransaction;
@@ -19,6 +18,7 @@ import org.keycloak.sessions.RootAuthenticationSessionModel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import jakarta.persistence.EntityManager;
