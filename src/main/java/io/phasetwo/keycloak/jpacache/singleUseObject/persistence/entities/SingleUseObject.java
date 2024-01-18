@@ -2,7 +2,7 @@ package io.phasetwo.keycloak.jpacache.singleUseObject.persistence.entities;
 
 import lombok.*;
 import jakarta.persistence.*;
-import java.util.Objects;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,9 +11,8 @@ import java.util.Map;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
 @NamedQueries({@NamedQuery(name = "findByKeyAndExpiration", query = "SELECT slo FROM SingleUseObject slo WHERE slo.key = :key AND (slo.expiresAt IS NULL OR slo.expiresAt > :now)")})
-@Table(name = "ORGANIZATION_ATTRIBUTE")
+@Table(name = "CACHE_SINGLE_USE_OBJECT")
 @Entity
 public class SingleUseObject {
   @Id

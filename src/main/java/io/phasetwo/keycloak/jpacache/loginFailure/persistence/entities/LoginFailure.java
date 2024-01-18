@@ -1,43 +1,38 @@
-/*
- * Copyright 2022 IT-Systemhaus der Bundesagentur fuer Arbeit
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.phasetwo.keycloak.jpacache.loginFailure.persistence.entities;
 
-import com.datastax.oss.driver.api.mapper.annotations.ClusteringColumn;
-import com.datastax.oss.driver.api.mapper.annotations.CqlName;
-import com.datastax.oss.driver.api.mapper.annotations.Entity;
-import com.datastax.oss.driver.api.mapper.annotations.PartitionKey;
 import lombok.*;
+import jakarta.persistence.*;
+import java.util.Date;
 
 @EqualsAndHashCode(of = "id")
 @Builder
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@NamedQueries({@NamedQuery(name = "findByUserId", query = "SELECT lf FROM LoginFailure lf WHERE lf.realmId = :realmId AND lf.userId = :userId ORDER BY lastFailure DESC"), @NamedQuery(name = "deleteByRealmId", query = "DELETE FROM LoginFailure lf WHERE lf.realmId = :realmId")})
+@Table(name = "CACHE_LOGIN_FAILURE")
 @Entity
-@CqlName("login_failures")
 public class LoginFailure {
-    @PartitionKey
-    private String userId;
+  @Id
+  @Column(name = "ID", length = 36)
+  @Access(AccessType.PROPERTY)
+  protected String id;
 
-    @ClusteringColumn
-    private String id;
+  @Column(name = "USER_ID")
+  private String userId;
 
-    private String realmId;
-    private Long failedLoginNotBefore;
-    private Integer numFailures;
-    private Long lastFailure;
-    private String lastIpFailure;
+  @Column(name = "REALM_ID")
+  private String realmId;
+
+  @Column(name = "FAILED_LOGIN_NOT_BEFORE")
+  private Date failedLoginNotBefore;
+
+  @Column(name = "NUM_FAILURES")
+  private Integer numFailures;
+
+  @Column(name = "LAST_FAILURE")
+  private Date lastFailure;
+
+  @Column(name = "LAST_IP_FAILURE")
+  private String lastIpFailure;
 }

@@ -1,27 +1,8 @@
-/*
- * Copyright 2022 IT-Systemhaus der Bundesagentur fuer Arbeit
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.phasetwo.keycloak.jpacache.authSession.persistence.entities;
 
-import com.datastax.oss.driver.api.mapper.annotations.ClusteringColumn;
-import com.datastax.oss.driver.api.mapper.annotations.CqlName;
-import com.datastax.oss.driver.api.mapper.annotations.Entity;
-import com.datastax.oss.driver.api.mapper.annotations.PartitionKey;
 import lombok.*;
+import jakarta.persistence.*;
 import org.keycloak.sessions.CommonClientSessionModel;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -33,79 +14,94 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@CqlName("authentication_sessions")
 public class AuthenticationSession {
-    @PartitionKey
-    private String parentSessionId;
+  @Id
+  @Column(name = "ID", length = 36)
+  @Access(AccessType.PROPERTY)
+  protected String id;
 
-    @ClusteringColumn
-    private String tabId;
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "PARENT_SESSION_ID")
+  private RootAuthenticationSession parentSession;
 
-    @Builder.Default
-    private Map<String, CommonClientSessionModel.ExecutionStatus> executionStatus = new HashMap<>();
+  @Column(name = "TAB_ID")
+  private String tabId;
 
-    private Long timestamp;
+  @Column(name = "USER_ID")
+  private String userId;
 
-    private String userId;
-    private String clientId;
-    private String redirectUri;
-    private String action;
-    private String protocol;
+  @Column(name = "CLIENT_ID")
+  private String clientId;
 
-    @Builder.Default
-    private Set<String> requiredActions = new HashSet<>();
+  @Column(name = "REDIRECT_URI")
+  private String redirectUri;
 
-    @Builder.Default
-    private Set<String> clientScopes = new HashSet<>();
+  @Column(name = "ACTION")
+  private String action;
 
-    @Builder.Default
-    private Map<String, String> userNotes = new HashMap<>();
+  @Column(name = "PROTOCOL")
+  private String protocol;
 
-    @Builder.Default
-    private Map<String, String> authNotes = new HashMap<>();
+  @Column(name = "TIMESTAMP")
+  private Date timestamp;
 
-    @Builder.Default
-    private Map<String, String> clientNotes = new HashMap<>();
+  @Builder.Default
+  private Map<String, CommonClientSessionModel.ExecutionStatus> executionStatus = new HashMap<>();
 
-    public Map<String, CommonClientSessionModel.ExecutionStatus> getExecutionStatus() {
-        if (executionStatus == null) {
-            executionStatus = new HashMap<>();
-        }
-        return executionStatus;
+  @Builder.Default
+  private Set<String> requiredActions = new HashSet<>();
+
+  @Builder.Default
+  private Set<String> clientScopes = new HashSet<>();
+  
+  @Builder.Default
+  private Map<String, String> userNotes = new HashMap<>();
+  
+  @Builder.Default
+  private Map<String, String> authNotes = new HashMap<>();
+  
+  @Builder.Default
+  private Map<String, String> clientNotes = new HashMap<>();
+  
+  public Map<String, CommonClientSessionModel.ExecutionStatus> getExecutionStatus() {
+    if (executionStatus == null) {
+      executionStatus = new HashMap<>();
     }
-
-    public Set<String> getRequiredActions() {
-        if (requiredActions == null) {
-            requiredActions = new HashSet<>();
-        }
-        return requiredActions;
+    return executionStatus;
+  }
+  
+  public Set<String> getRequiredActions() {
+    if (requiredActions == null) {
+      requiredActions = new HashSet<>();
     }
-
-    public Set<String> getClientScopes() {
-        if (clientScopes == null) {
-            clientScopes = new HashSet<>();
-        }
-        return clientScopes;
+    return requiredActions;
+  }
+  
+  public Set<String> getClientScopes() {
+    if (clientScopes == null) {
+      clientScopes = new HashSet<>();
     }
-
-    public Map<String, String> getUserNotes() {
-        if (userNotes == null) {
-            userNotes = new HashMap<>();
-        }
-        return userNotes;
+    return clientScopes;
+  }
+  
+  public Map<String, String> getUserNotes() {
+    if (userNotes == null) {
+      userNotes = new HashMap<>();
     }
-
-    public Map<String, String> getAuthNotes() {
-        if (authNotes == null) {
-            authNotes = new HashMap<>();
-        }
-        return authNotes;
+    return userNotes;
+  }
+  
+  public Map<String, String> getAuthNotes() {
+    if (authNotes == null) {
+      authNotes = new HashMap<>();
     }
-
-    public Map<String, String> getClientNotes() {
-        if (clientNotes == null) {
-            clientNotes = new HashMap<>();
-        }
-        return clientNotes;
+    return authNotes;
+  }
+  
+  public Map<String, String> getClientNotes() {
+    if (clientNotes == null) {
+      clientNotes = new HashMap<>();
     }
+    return clientNotes;
+  }
 }

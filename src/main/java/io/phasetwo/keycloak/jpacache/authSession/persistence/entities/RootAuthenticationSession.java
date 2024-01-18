@@ -1,24 +1,8 @@
-/*
- * Copyright 2022 IT-Systemhaus der Bundesagentur fuer Arbeit
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.phasetwo.keycloak.jpacache.authSession.persistence.entities;
 
-import com.datastax.oss.driver.api.mapper.annotations.CqlName;
-import com.datastax.oss.driver.api.mapper.annotations.Entity;
-import com.datastax.oss.driver.api.mapper.annotations.PartitionKey;
 import lombok.*;
+import jakarta.persistence.*;
+import java.util.Date;
 import io.phasetwo.keycloak.mapstorage.common.ExpirableEntity;
 
 @EqualsAndHashCode(of = "id")
@@ -26,13 +10,28 @@ import io.phasetwo.keycloak.mapstorage.common.ExpirableEntity;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@NamedQueries({@NamedQuery(name = "findRootAuthSession", query = "SELECT s FROM RootAuthenticationSession s WHERE s.realmId = :realmId AND s.id = :id"), @NamedQuery(name = "deleteRootAuthSession", query = "DELETE FROM RootAuthenticationSession s WHERE s.realmId = :realmId AND s.id = :id")})
+@Table(name = "CACHE_ROOT_AUTH_SESSION")
 @Entity
-@CqlName("root_authentication_sessions")
 public class RootAuthenticationSession implements ExpirableEntity {
-    @PartitionKey
-    private String id;
-    private String realmId;
+  @Id
+  @Column(name = "ID", length = 36)
+  @Access(AccessType.PROPERTY)
+  protected String id;
 
-    private Long timestamp;
-    private Long expiration;
+  @Column(name = "REALM_ID")
+  private String realmId;
+
+  @Column(name = "TIMESTAMP")  
+  private Integer timestamp;
+
+  @Column(name = "EXPIRATION")
+  private Date expiration;
+
+  @Builder.Default
+  @ElementCollection
+  @MapKeyColumn(name="TAB_ID")
+  @CollectionTable(name="CACHE_AUTH_SESSION", joinColumns=@JoinColumn(name="PARENT_SESSION_ID"))
+  private Map<String, AuthenticationSession> sessions = new HashMap<>();
+
 }

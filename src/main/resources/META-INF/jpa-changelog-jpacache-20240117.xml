@@ -23,7 +23,7 @@
       </column>
       <column name="REALM_ID" type="VARCHAR(36)"/>
       <column name="EXPIRATION" type="TIMESTAMP"/>
-      <column name="TIMESTAMP" type="TIMESTAMP"/>
+      <column name="TIMESTAMP" type="INT"/>
     </createTable>
   </changeSet>
 
@@ -37,7 +37,7 @@
       <column name="NUM_FAILURES" type="INT"/>
       <column name="FAILED_LOGIN_NOT_BEFORE" type="TIMESTAMP"/>
       <column name="LAST_FAILURE" type="TIMESTAMP"/>
-      <column name="LAST_IP_FAILURE" type="TIMESTAMP"/>
+      <column name="LAST_IP_FAILURE" type="VARCHAR(15)"/>
     </createTable>
   </changeSet>
 
@@ -46,7 +46,9 @@
       <column name="ID" type="VARCHAR(36)">
         <constraints nullable="false"/>
       </column>
-      <column name="KEY" type="VARCHAR(1024)"/>
+      <column name="KEY" type="VARCHAR(1024)">
+	<constraints nullable="false" unique="true" uniqueConstraintName="UQ_CACHE_SINGLE_USE_OBJECT_KEY"/>
+      </column>
       <column name="EXPIRES_AT" type="TIMESTAMP"/>
     </createTable>
   </changeSet>
@@ -63,29 +65,12 @@
 
   <!--
 
-CREATE TABLE IF NOT EXISTS login_failures (
-    user_id text,
-    id text,
-    failed_login_not_before bigint,
-    last_failure bigint,
-    last_ip_failure text,
-    num_failures int,
-    realm_id text,
-    PRIMARY KEY (user_id, id)
-) WITH CLUSTERING ORDER BY (id ASC);
-
-CREATE TABLE IF NOT EXISTS single_use_objects (
-    key text PRIMARY KEY,
-    notes map<text, text>
-);
-
 CREATE TABLE IF NOT EXISTS attributes_to_user_sessions (
     attribute_name text,
     attribute_value text,
     user_session_id text,
     PRIMARY KEY (attribute_name, attribute_value, user_session_id)
 ) WITH CLUSTERING ORDER BY (attribute_value ASC, user_session_id ASC);
-
 
 CREATE TABLE IF NOT EXISTS authentication_sessions (
     parent_session_id text,
