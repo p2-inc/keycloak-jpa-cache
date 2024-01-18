@@ -1,23 +1,8 @@
-/*
- * Copyright 2022 IT-Systemhaus der Bundesagentur fuer Arbeit
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.phasetwo.keycloak.jpacache.userSession.persistence.entities;
 
 import lombok.*;
+import jakarta.persistence.*;
 import io.phasetwo.keycloak.mapstorage.common.ExpirableEntity;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,26 +11,52 @@ import java.util.Map;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "CACHE_CLIENT_SESSION")
+@Entity
 public class AuthenticatedClientSessionValue implements ExpirableEntity {
-    private String id;
-    private String clientId;
-    private Long timestamp;
-    private Long expiration;
+  @Id
+  @Column(name = "ID", length = 36)
+  @Access(AccessType.PROPERTY)
+  protected String id;
+  
+  @Column(name = "CLIENT_ID")
+  private String clientId;
+ 
+  @Column(name = "TIMESTAMP")
+  private Long timestamp;
+ 
+  @Column(name = "EXPIRATION")
+  private Long expiration;
+  
+  @Column(name = "AUTH_METHOD")
+  private String authMethod;
+ 
+  @Column(name = "REDIRECT_URI")
+  private String redirectUri;
+ 
+  @Column(name = "ACTION")
+  private String action;
+ 
+  @Column(name = "CURRENT_REFRESH_TOKEN")
+  private String currentRefreshToken;
+  
+  @Column(name = "CURRENT_REFRESH_TOKEN_USE_COUNT")
+  private Integer currentRefreshTokenUseCount;
+  
+  @Column(name = "OFFLINE")
+  private Boolean offline;
 
-    private String authMethod;
-    private String redirectUri;
-    private String action;
-    private String currentRefreshToken;
-    private Integer currentRefreshTokenUseCount;
-    private boolean offline;
+  @Builder.Default
+  @ElementCollection
+  @MapKeyColumn(name="NAME")
+  @CollectionTable(name="CACHE_CLIENT_SESSION_NOTE", joinColumns=@JoinColumn(name="CLIENT_SESSION_ID"))
+  @Column(name = "NOTE")
+  private Map<String, String> notes = new HashMap<>();
 
-    @Builder.Default
-    private Map<String, String> notes = new HashMap<>();
-
-    public Map<String, String> getNotes() {
-        if (notes == null) {
-            notes = new HashMap<>();
-        }
-        return notes;
+  public Map<String, String> getNotes() {
+    if (notes == null) {
+      notes = new HashMap<>();
     }
+    return notes;
+  }
 }

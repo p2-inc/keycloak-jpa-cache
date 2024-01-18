@@ -1,30 +1,12 @@
-/*
- * Copyright 2022 IT-Systemhaus der Bundesagentur fuer Arbeit
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.phasetwo.keycloak.jpacache.userSession.persistence.entities;
 
-import com.datastax.oss.driver.api.mapper.annotations.CqlName;
-import com.datastax.oss.driver.api.mapper.annotations.Entity;
-import com.datastax.oss.driver.api.mapper.annotations.PartitionKey;
 import lombok.*;
+import jakarta.persistence.*;
+import java.util.Date;
 import org.keycloak.models.UserSessionModel;
 import io.phasetwo.keycloak.mapstorage.common.ExpirableEntity;
-
 import java.util.HashMap;
 import java.util.Map;
-
 import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
 
 @EqualsAndHashCode(of = "id")
@@ -32,32 +14,66 @@ import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "CACHE_USER_SESSION")
 @Entity
-@CqlName("user_sessions")
 public class UserSession implements ExpirableEntity {
-    @PartitionKey
-    private String id;
+  @Id
+  @Column(name = "ID", length = 36)
+  @Access(AccessType.PROPERTY)
+  protected String id;
 
-    private String realmId;
-    private String userId;
-    private String loginUsername;
-    private String ipAddress;
-    private String authMethod;
-    private String brokerSessionId;
-    private String brokerUserId;
+  @Column(name = "REALM_ID")
+  private String realmId;
+  
+  @Column(name = "USER_ID")
+  private String userId;
+
+  @Column(name = "LOGIN_USERNAME")
+  private String loginUsername;
+
+  @Column(name = "IP_ADDRESS")
+  private String ipAddress;
+
+  @Column(name = "AUTH_METHOD")
+  private String authMethod;
+
+  @Column(name = "BROKER_SESSION_ID")
+  private String brokerSessionId;
+
+  @Column(name = "BROKER_USER_ID")
+  private String brokerUserId;
+
+  @Column(name = "TIMESTAMP")
     private Long timestamp;
-    private Long expiration;
-    private Boolean offline;
+
+  @Column(name = "EXPIRATION")
+  private Long expiration;
+
+  @Column(name = "OFFLINE")
+  private Boolean offline;
+
+  @Column(name = "REMEMBER_ME")
     private Boolean rememberMe;
-    private Long lastSessionRefresh;
 
-    private UserSessionModel.State state;
+  @Column(name = "LAST_SESSION_REFRESH")
+  private Long lastSessionRefresh;
 
-    @Builder.Default
-    private Map<String, String> notes = new HashMap<>();
+  @Column(name = "STATE")
+  @Enumerated(EnumType.STRING)
+  private UserSessionModel.State state;
 
-    @Builder.Default
-    private Map<String, AuthenticatedClientSessionValue> clientSessions = new HashMap<>();
+  @Builder.Default
+  @ElementCollection
+  @MapKeyColumn(name="NAME")
+  @CollectionTable(name="CACHE_USER_SESSION_NOTE", joinColumns=@JoinColumn(name="USER_SESSION_ID"))
+  @Column(name = "NOTE")
+  private Map<String, String> notes = new HashMap<>();
+
+  @Builder.Default
+  @ElementCollection
+  @MapKeyColumn(name="")
+  @CollectionTable(name="CACHE_AUTH_SESSION", joinColumns=@JoinColumn(name="PARENT_SESSION_ID"))
+  private Map<String, AuthenticatedClientSessionValue> clientSessions = new HashMap<>();
 
     private UserSessionModel.SessionPersistenceState persistenceState;
 

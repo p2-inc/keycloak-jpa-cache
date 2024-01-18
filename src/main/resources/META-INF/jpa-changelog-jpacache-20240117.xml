@@ -7,7 +7,7 @@
         <constraints nullable="false"/>
       </column>
       <column name="REALM_ID" type="VARCHAR(36)"/>
-      <column name="EXPIRATION" type="TIMESTAMP"/>
+      <column name="EXPIRATION" type="BIGINT"/>
       <column name="TIMESTAMP" type="INT"/>
     </createTable>
   </changeSet>
@@ -37,7 +37,7 @@
       <column name="NAME" type="VARCHAR(1024)">
         <constraints nullable="false"/>
       </column>
-      <column name="VALUE" type="CLOB"/>
+      <column name="NOTE" type="CLOB"/>
     </createTable>
     <addForeignKeyConstraint baseColumnNames="AUTH_SESSION_ID" baseTableName="CACHE_AUTH_SESSION_AUTH_NOTE" constraintName="FK_RPNHP73T960DTGJIW5KW" referencedColumnNames="ID" referencedTableName="CACHE_AUTH_SESSION" onDelete="CASCADE" />
   </changeSet>
@@ -50,7 +50,7 @@
       <column name="NAME" type="VARCHAR(1024)">
         <constraints nullable="false"/>
       </column>
-      <column name="VALUE" type="CLOB"/>
+      <column name="NOTE" type="CLOB"/>
     </createTable>
     <addForeignKeyConstraint baseColumnNames="AUTH_SESSION_ID" baseTableName="CACHE_AUTH_SESSION_CLIENT_NOTE" constraintName="FK_T8XDT2CC5XBGURAR2X34" referencedColumnNames="ID" referencedTableName="CACHE_AUTH_SESSION" onDelete="CASCADE" />
   </changeSet>
@@ -63,7 +63,7 @@
       <column name="NAME" type="VARCHAR(1024)">
         <constraints nullable="false"/>
       </column>
-      <column name="VALUE" type="CLOB"/>
+      <column name="NOTE" type="CLOB"/>
     </createTable>
     <addForeignKeyConstraint baseColumnNames="AUTH_SESSION_ID" baseTableName="CACHE_AUTH_SESSION_USER_NOTE" constraintName="FK_C95MFHFUTEZVLJFIT5AC" referencedColumnNames="ID" referencedTableName="CACHE_AUTH_SESSION" onDelete="CASCADE" />
   </changeSet>
@@ -105,6 +105,71 @@
     <addForeignKeyConstraint baseColumnNames="AUTH_SESSION_ID" baseTableName="CACHE_AUTH_SESSION_REQUIRED_ACTION" constraintName="FK_IH6ZJJOWLOH31TUC1ACU" referencedColumnNames="ID" referencedTableName="CACHE_AUTH_SESSION" onDelete="CASCADE" />
   </changeSet>
 
+  <changeSet author="xgp" id="20240117-301">
+    <createTable tableName="CACHE_USER_SESSION">
+      <column name="ID" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="AUTH_METHOD" type="VARCHAR(36)"/>
+      <column name="BROKER_SESSION_ID" type="VARCHAR(36)"/>
+      <column name="EXPIRATION" type="INT"/>
+      <column name="IP_ADDRESS" type="VARCHAR(20)"/>
+      <column name="LAST_SESSION_REFRESH" type="BIGINT"/>
+      <column name="LOGIN_USERNAME" type="VARCHAR(1024)"/>
+      <column name="OFFLINE" type="BOOLEAN"/>
+      <column name="PERSISTENCE_STATE" type="VARCHAR(10)"/>
+      <column name="REALM_ID" type="VARCHAR(36)"/>
+      <column name="REMEMBER_ME" type="BOOLEAN"/>
+      <column name="STATE" type="VARCHAR(25)"/>
+      <column name="TIMESTAMP" type="INT"/>
+    </createTable>
+  </changeSet>
+
+  <changeSet author="xgp" id="20240117-302">
+    <createTable tableName="CACHE_USER_SESSION_NOTE">
+      <column name="USER_SESSION_ID" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="NAME" type="VARCHAR(1024)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="NOTE" type="CLOB"/>
+    </createTable>
+    <addForeignKeyConstraint baseColumnNames="USER_SESSION_ID" baseTableName="CACHE_USER_SESSION_NOTE" constraintName="FK_JV696TMAM4AWPHXZVHPD" referencedColumnNames="ID" referencedTableName="CACHE_USER_SESSION" onDelete="CASCADE" />
+  </changeSet>
+
+  <changeSet author="xgp" id="20240117-303">
+    <createTable tableName="CACHE_CLIENT_SESSION">
+      <column name="ID" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="USER_SESSION_ID" type="VARCHAR(36)"/>
+      <column name="CLIENT_ID" type="VARCHAR(36)"/>
+      <column name="AUTH_METHOD" type="VARCHAR(36)"/>
+      <column name="REDIRECT_URI" type="VARCHAR(4096)"/>
+      <column name="ACTION" type="VARCHAR(36)"/>
+      <column name="CURRENT_REFRESH_TOKEN" type="VARCHAR(4096)"/>
+      <column name="CURRENT_REFRESH_TOKEN_USE_COUNT" type="INT"/>
+      <column name="OFFLINE" type="BOOLEAN"/>
+      <column name="TIMESTAMP" type="TIMESTAMP"/>
+      <column name="EXPIRATION" type="INT"/>
+    </createTable>
+    <addForeignKeyConstraint baseColumnNames="USER_SESSION_ID" baseTableName="CACHE_USER_SESSION" constraintName="FK_X1HLA7Q53JNO9YC3SSKR" referencedColumnNames="ID" referencedTableName="CACHE_USER_SESSION" onDelete="CASCADE" />
+  </changeSet>
+
+  <changeSet author="xgp" id="20240117-304">
+    <createTable tableName="CACHE_CLIENT_SESSION_NOTE">
+      <column name="CLIENT_SESSION_ID" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="NAME" type="VARCHAR(1024)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="NOTE" type="CLOB"/>
+    </createTable>
+    <addForeignKeyConstraint baseColumnNames="CLIENT_SESSION_ID" baseTableName="CACHE_CLIENT_SESSION_NOTE" constraintName="FK_L74VGYK9EU6WD27CEXWU" referencedColumnNames="ID" referencedTableName="CACHE_CLIENT_SESSION" onDelete="CASCADE" />
+  </changeSet>
+  
   <changeSet author="xgp" id="20240117-501">
     <createTable tableName="CACHE_LOGIN_FAILURE">
       <column name="ID" type="VARCHAR(36)">
@@ -155,26 +220,6 @@ CREATE TABLE IF NOT EXISTS attributes_to_user_sessions (
     user_session_id text,
     PRIMARY KEY (attribute_name, attribute_value, user_session_id)
 ) WITH CLUSTERING ORDER BY (attribute_value ASC, user_session_id ASC);
-
-CREATE TABLE IF NOT EXISTS user_sessions (
-    id text PRIMARY KEY,
-    auth_method text,
-    broker_session_id text,
-    broker_user_id text,
-    expiration bigint,
-    ip_address text,
-    last_session_refresh bigint,
-    login_username text,
-    offline boolean,
-    persistence_state text,
-    realm_id text,
-    remember_me boolean,
-    state text,
-    timestamp bigint,
-    user_id text,
-    client_sessions map<text, text>,
-    notes map<text, text>
-);
 
 CREATE TABLE IF NOT EXISTS user_sessions_to_attributes (
     user_session_id text,

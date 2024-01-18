@@ -33,8 +33,6 @@ public class JpaCacheAuthSessionProvider implements AuthenticationSessionProvide
   private final EntityManager entityManager;
   private final int authSessionsLimit;
 
-  private Map<String, JpaCacheRootAuthSessionAdapter> sessionModels = new HashMap<>();
-
   private Function<RootAuthenticationSession, RootAuthenticationSessionModel> entityToAdapterFunc(RealmModel realm) {
     return origEntity -> {
       if (origEntity == null) {
@@ -42,17 +40,12 @@ public class JpaCacheAuthSessionProvider implements AuthenticationSessionProvide
       }
 
       if (isExpired(origEntity, true)) {
-        authSessionRepository.deleteRootAuthSession(origEntity);
-        sessionModels.remove(origEntity.getId());
+        entityManager.remove(origEntity);
+        entityManager.flush();
         return null;
       } else {
-        if (sessionModels.containsKey(origEntity.getId())) {
-          return sessionModels.get(origEntity.getId());
-        }
-
-        JpaCacheRootAuthSessionAdapter adapter = new JpaCacheRootAuthSessionAdapter(session, realm, origEntity, authSessionRepository, authSessionsLimit);
+        JpaCacheRootAuthSessionAdapter adapter = new JpaCacheRootAuthSessionAdapter(session, realm, origEntity, authSessionsLimit, entityManager);
         session.getTransactionManager().enlistAfterCompletion((CassandraModelTransaction) adapter::flush);
-        sessionModels.put(origEntity.getId(), adapter);
         return adapter;
       }
     };
@@ -116,7 +109,6 @@ public class JpaCacheAuthSessionProvider implements AuthenticationSessionProvide
         .setParameter("realmId", realm.getId())
         .setParameter("id",authenticationSession.getId())
         .executeUpdate();
-    sessionModels.remove(authenticationSession.getId());
     ((JpaCacheRootAuthSessionAdapter) authenticationSession).markDeleted();
   }
 
@@ -148,12 +140,14 @@ public class JpaCacheAuthSessionProvider implements AuthenticationSessionProvide
       return;
     }
     Objects.requireNonNull(authNotesFragment, "The provided authentication's notes map can't be null!");
-    AuthenticationSession authenticationSession = authSessionRepository.findAuthSessionsByParentSessionId(compoundId.getRootSessionId()).stream()
-                                                  .filter(s -> Objects.equals(s.getTabId(), compoundId.getTabId()))
-                                                  .filter(s -> Objects.equals(s.getClientId(), compoundId.getClientUUID()))
-                                                  .findFirst()
-                                                  .orElse(null);
 
+    TypedQuery<AuthenticationSession> query = entityManager.createNamedQuery("findAuthSessionsByCompoundId", AuthenticationSession.class);
+    query.setParameter("parentSessionId", compoundId.getRootSessionId());
+    query.setParameter("tabId", compoundId.getTabId());
+    query.setParameter("clientId", compoundId.getClientId());
+    return query.getResultList().stream().findFirst();
+
+    AuthenticationSession authenticationSession = query.getSingleResult().orElse(null);
     if (authenticationSession != null) {
       authenticationSession.setAuthNotes(authNotesFragment);
     }

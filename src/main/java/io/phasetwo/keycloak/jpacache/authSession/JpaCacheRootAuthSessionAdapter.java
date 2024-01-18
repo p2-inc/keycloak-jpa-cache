@@ -20,7 +20,7 @@ import org.keycloak.sessions.RootAuthenticationSessionModel;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
+import jakarta.persistence.EntityManager;
 import static org.keycloak.models.utils.SessionExpiration.getAuthSessionLifespan;
 
 @JBossLog
@@ -31,10 +31,7 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
   private final RealmModel realm;
   private final RootAuthenticationSession rootAuthenticationSession;
   private final int authSessionsLimit;
-
-  private Map<String, JpaCacheAuthSessionAdapter> sessionModels = new HashMap<>();
-  private boolean updated = false;
-  private boolean deleted = false;
+  private final EntityManager entityManager;
 
   private static final Comparator<AuthenticationSession> TIMESTAMP_COMPARATOR = Comparator.comparingLong(AuthenticationSession::getTimestamp);
 
@@ -44,21 +41,9 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
         return null;
       }
 
-      if (sessionModels.containsKey(origEntity.getTabId())) {
-        return sessionModels.get(origEntity.getTabId());
-      }
-
-      JpaCacheAuthSessionAdapter adapter = new JpaCacheAuthSessionAdapter(session, realm, this, origEntity, authSessionRepository);
-      session.getTransactionManager()
-          .enlistAfterCompletion((CassandraModelTransaction) adapter::flush);
-      sessionModels.put(adapter.getTabId(), adapter);
-      
+      JpaCacheAuthSessionAdapter adapter = new JpaCacheAuthSessionAdapter(session, realm, this, origEntity, entityManager);
       return adapter;
     };
-  }
-
-  public void markDeleted() {
-    deleted = true;
   }
 
   public RootAuthenticationSession getEntity() {
@@ -84,14 +69,11 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
   public void setTimestamp(int timestamp) {
     rootAuthenticationSession.setTimestamp(TimeAdapter.fromSecondsToMilliseconds(timestamp));
     rootAuthenticationSession.setExpiration(TimeAdapter.fromSecondsToMilliseconds(SessionExpiration.getAuthSessionExpiration(realm, timestamp)));
-    
-    updated = true;
   }
 
   @Override
   public Map<String, AuthenticationSessionModel> getAuthenticationSessions() {
-    return authSessionRepository.findAuthSessionsByParentSessionId(rootAuthenticationSession.getId())
-        .stream()
+    return rootAuthenticationSession.getAuthSessions().values().stream()
         .map(entityToAdapterFunc(realm))
         .collect(Collectors.toMap(JpaCacheAuthSessionAdapter::getTabId, Function.identity()));
   }
@@ -102,8 +84,7 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
       return null;
     }
 
-    return authSessionRepository.findAuthSessionsByParentSessionId(rootAuthenticationSession.getId())
-        .stream()
+    return rootAuthenticationSession.getAuthSessions().values().stream()
         .filter(s -> Objects.equals(s.getClientId(), client.getId()))
         .filter(s -> Objects.equals(s.getTabId(), tabId))
         .map(entityToAdapterFunc(realm))
@@ -115,7 +96,9 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
   public AuthenticationSessionModel createAuthenticationSession(ClientModel client) {
     Objects.requireNonNull(client, "The provided client can't be null!");
     
-    List<AuthenticationSession> authenticationSessions = authSessionRepository.findAuthSessionsByParentSessionId(rootAuthenticationSession.getId());
+    TypedQuery<AuthenticationSession> query = entityManager.createNamedQuery("findAuthSessionsByRootsessionId", AuthenticationSession.class);
+    query.setParameter("parentSessionId", rootAuthenticationSession.getId());
+    List<AuthenticationSession> authenticationSessions = query.getResultList();
     if (authenticationSessions != null && authenticationSessions.size() >= authSessionsLimit) {
       Optional<AuthenticationSession> oldest = authenticationSessions.stream()
                                                .min(TIMESTAMP_COMPARATOR);
@@ -124,9 +107,9 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
 
       if (tabId != null && !oldest.isEmpty()) {
         log.debugf("Reached limit (%s) of active authentication sessions per a root authentication session. Removing oldest authentication session with TabId %s.", authSessionsLimit, tabId);
-
         // remove the oldest authentication session
-        authSessionRepository.deleteAuthSession(oldest.get());
+        entityManager.remove(oldest.get());
+        entityManager.flush();
       }
     }
 
@@ -142,9 +125,6 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
 
     rootAuthenticationSession.setTimestamp(timestamp);
     rootAuthenticationSession.setExpiration(timestamp + TimeAdapter.fromSecondsToMilliseconds(authSessionLifespanSeconds));
-    
-    authSessionRepository.insertOrUpdate(authSession, rootAuthenticationSession);
-    updated = true;
 
     JpaCacheAuthSessionAdapter jpaCacheAuthSessionAdapter = entityToAdapterFunc(realm).apply(authSession);
     session.getContext().setAuthenticationSession(jpaCacheAuthSessionAdapter);
@@ -154,46 +134,20 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
 
   @Override
   public void removeAuthenticationSessionByTabId(String tabId) {
-    List<AuthenticationSession> allAuthSessions = authSessionRepository.findAuthSessionsByParentSessionId(rootAuthenticationSession.getId());
-    AuthenticationSession toDelete = allAuthSessions.stream()
-                                     .filter(s -> Objects.equals(s.getTabId(), tabId))
-                                     .findFirst()
-                                     .orElse(null);
-    
-    if (toDelete != null) {
-      authSessionRepository.deleteAuthSession(toDelete);
-    }
-    
-    JpaCacheAuthSessionAdapter model = sessionModels.get(tabId);
-    if (model != null) {
-      model.markDeleted();
-    }
-    sessionModels.remove(tabId);
-    
-    if (toDelete != null) {
-      if (allAuthSessions.size() == 1) {
-        session.authenticationSessions()
-            .removeRootAuthenticationSession(realm, this);
-        deleted = true;
+    if (rootAuthenticationSession.getAuthenticationSessions().remove(tabId) != null) {
+      if (entity.getAuthenticationSessions().isEmpty()) {
+        entityManager.remove(rootAuthenticationSession);
+        entityManager.flush();
       } else {
-        long timestamp = Time.currentTimeMillis();
-        rootAuthenticationSession.setTimestamp(timestamp);
-        int authSessionLifespanSeconds = getAuthSessionLifespan(realm);
-        rootAuthenticationSession.setExpiration(timestamp + TimeAdapter.fromSecondsToMilliseconds(authSessionLifespanSeconds));
-        updated = true;
+        rootAuthenticationSession.setTimestamp(Time.currentTime());
       }
     }
   }
 
   @Override
   public void restartSession(RealmModel realm) {
-    authSessionRepository.deleteAuthSessions(rootAuthenticationSession.getId());
-    sessionModels.clear();
-    long timestamp = Time.currentTimeMillis();
-    rootAuthenticationSession.setTimestamp(timestamp);
-    int authSessionLifespanSeconds = getAuthSessionLifespan(realm);
-    rootAuthenticationSession.setExpiration(timestamp + TimeAdapter.fromSecondsToMilliseconds(authSessionLifespanSeconds));
-    updated = true;
+    rootAuthenticationSession.getAuthenticationSessions().clear();
+    rootAuthenticationSession.setTimestamp(Time.currentTime());
   }
 
   private String generateTabId() {
@@ -201,10 +155,4 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
                             .randomBytes(8));
   }
 
-  public void flush() {
-    if (updated && !deleted) {
-      authSessionRepository.insertOrUpdate(rootAuthenticationSession);
-      updated = false;
-    }
-  }
 }
