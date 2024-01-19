@@ -1,12 +1,11 @@
 package io.phasetwo.keycloak.jpacache.loginFailure;
 
-import io.phasetwo.keycloak.jpacache.loginFailure.persistence.LoginFailureRepository;
 import io.phasetwo.keycloak.jpacache.loginFailure.persistence.entities.LoginFailure;
+import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserLoginFailureModel;
-import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 
 @EqualsAndHashCode(of = "entity")
 @RequiredArgsConstructor
@@ -27,12 +26,15 @@ public class JpaCacheLoginFailureAdapter implements UserLoginFailureModel {
   @Override
   public int getFailedLoginNotBefore() {
     Long failedLoginNotBefore = entity.getFailedLoginNotBefore();
-    return failedLoginNotBefore == null ? 0 : TimeAdapter.fromLongWithTimeInSecondsToIntegerWithTimeInSeconds(failedLoginNotBefore);
+    return failedLoginNotBefore == null
+        ? 0
+        : TimeAdapter.fromLongWithTimeInSecondsToIntegerWithTimeInSeconds(failedLoginNotBefore);
   }
 
   @Override
   public void setFailedLoginNotBefore(int notBefore) {
-    entity.setFailedLoginNotBefore(TimeAdapter.fromIntegerWithTimeInSecondsToLongWithTimeAsInSeconds(notBefore));
+    entity.setFailedLoginNotBefore(
+        TimeAdapter.fromIntegerWithTimeInSecondsToLongWithTimeAsInSeconds(notBefore));
   }
 
   @Override

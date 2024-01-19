@@ -178,8 +178,8 @@
       <column name="REALM_ID" type="VARCHAR(36)"/>
       <column name="USER_ID" type="VARCHAR(36)"/>
       <column name="NUM_FAILURES" type="INT"/>
-      <column name="FAILED_LOGIN_NOT_BEFORE" type="TIMESTAMP"/>
-      <column name="LAST_FAILURE" type="TIMESTAMP"/>
+      <column name="FAILED_LOGIN_NOT_BEFORE" type="BIGINT"/>
+      <column name="LAST_FAILURE" type="BIGINT"/>
       <column name="LAST_IP_FAILURE" type="VARCHAR(15)"/>
     </createTable>
   </changeSet>

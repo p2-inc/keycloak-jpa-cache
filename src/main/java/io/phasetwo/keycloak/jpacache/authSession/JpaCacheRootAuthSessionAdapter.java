@@ -1,9 +1,15 @@
 package io.phasetwo.keycloak.jpacache.authSession;
 
-import io.phasetwo.keycloak.jpacache.authSession.persistence.AuthSessionRepository;
+import static org.keycloak.models.utils.SessionExpiration.getAuthSessionLifespan;
+
 import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.AuthenticationSession;
 import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.RootAuthenticationSession;
-import io.phasetwo.keycloak.jpacache.transaction.CassandraModelTransaction;
+import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.jbosslog.JBossLog;
@@ -13,15 +19,9 @@ import org.keycloak.common.util.Time;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
-import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import org.keycloak.models.utils.SessionExpiration;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.RootAuthenticationSessionModel;
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import jakarta.persistence.EntityManager;
-import static org.keycloak.models.utils.SessionExpiration.getAuthSessionLifespan;
 
 @JBossLog
 @EqualsAndHashCode(of = "rootAuthenticationSession")
@@ -33,15 +33,18 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
   private final int authSessionsLimit;
   private final EntityManager entityManager;
 
-  private static final Comparator<AuthenticationSession> TIMESTAMP_COMPARATOR = Comparator.comparingLong(AuthenticationSession::getTimestamp);
+  private static final Comparator<AuthenticationSession> TIMESTAMP_COMPARATOR =
+      Comparator.comparingLong(AuthenticationSession::getTimestamp);
 
-  private Function<AuthenticationSession, JpaCacheAuthSessionAdapter> entityToAdapterFunc(RealmModel realm) {
+  private Function<AuthenticationSession, JpaCacheAuthSessionAdapter> entityToAdapterFunc(
+      RealmModel realm) {
     return (origEntity) -> {
       if (origEntity == null) {
         return null;
       }
 
-      JpaCacheAuthSessionAdapter adapter = new JpaCacheAuthSessionAdapter(session, realm, this, origEntity, entityManager);
+      JpaCacheAuthSessionAdapter adapter =
+          new JpaCacheAuthSessionAdapter(session, realm, this, origEntity, entityManager);
       return adapter;
     };
   }
@@ -62,29 +65,32 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
 
   @Override
   public int getTimestamp() {
-    return TimeAdapter.fromLongWithTimeInSecondsToIntegerWithTimeInSeconds(TimeAdapter.fromMilliSecondsToSeconds(rootAuthenticationSession.getTimestamp()));
+    return TimeAdapter.fromLongWithTimeInSecondsToIntegerWithTimeInSeconds(
+        TimeAdapter.fromMilliSecondsToSeconds(rootAuthenticationSession.getTimestamp()));
   }
 
   @Override
   public void setTimestamp(int timestamp) {
     rootAuthenticationSession.setTimestamp(TimeAdapter.fromSecondsToMilliseconds(timestamp));
-    rootAuthenticationSession.setExpiration(TimeAdapter.fromSecondsToMilliseconds(SessionExpiration.getAuthSessionExpiration(realm, timestamp)));
+    rootAuthenticationSession.setExpiration(
+        TimeAdapter.fromSecondsToMilliseconds(
+            SessionExpiration.getAuthSessionExpiration(realm, timestamp)));
   }
 
   @Override
   public Map<String, AuthenticationSessionModel> getAuthenticationSessions() {
-    return rootAuthenticationSession.getAuthSessions().values().stream()
+    return rootAuthenticationSession.getAuthenticationSessions().values().stream()
         .map(entityToAdapterFunc(realm))
         .collect(Collectors.toMap(JpaCacheAuthSessionAdapter::getTabId, Function.identity()));
   }
-  
+
   @Override
   public AuthenticationSessionModel getAuthenticationSession(ClientModel client, String tabId) {
     if (client == null || tabId == null) {
       return null;
     }
 
-    return rootAuthenticationSession.getAuthSessions().values().stream()
+    return rootAuthenticationSession.getAuthenticationSessions().values().stream()
         .filter(s -> Objects.equals(s.getClientId(), client.getId()))
         .filter(s -> Objects.equals(s.getTabId(), tabId))
         .map(entityToAdapterFunc(realm))
@@ -95,18 +101,21 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
   @Override
   public AuthenticationSessionModel createAuthenticationSession(ClientModel client) {
     Objects.requireNonNull(client, "The provided client can't be null!");
-    
-    TypedQuery<AuthenticationSession> query = entityManager.createNamedQuery("findAuthSessionsByRootsessionId", AuthenticationSession.class);
+
+    TypedQuery<AuthenticationSession> query =
+        entityManager.createNamedQuery(
+            "findAuthSessionsByRootsessionId", AuthenticationSession.class);
     query.setParameter("parentSessionId", rootAuthenticationSession.getId());
     List<AuthenticationSession> authenticationSessions = query.getResultList();
     if (authenticationSessions != null && authenticationSessions.size() >= authSessionsLimit) {
-      Optional<AuthenticationSession> oldest = authenticationSessions.stream()
-                                               .min(TIMESTAMP_COMPARATOR);
-      String tabId = oldest.map(AuthenticationSession::getTabId)
-                     .orElse(null);
+      Optional<AuthenticationSession> oldest =
+          authenticationSessions.stream().min(TIMESTAMP_COMPARATOR);
+      String tabId = oldest.map(AuthenticationSession::getTabId).orElse(null);
 
       if (tabId != null && !oldest.isEmpty()) {
-        log.debugf("Reached limit (%s) of active authentication sessions per a root authentication session. Removing oldest authentication session with TabId %s.", authSessionsLimit, tabId);
+        log.debugf(
+            "Reached limit (%s) of active authentication sessions per a root authentication session. Removing oldest authentication session with TabId %s.",
+            authSessionsLimit, tabId);
         // remove the oldest authentication session
         entityManager.remove(oldest.get());
         entityManager.flush();
@@ -116,17 +125,20 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
     long timestamp = Time.currentTimeMillis();
     int authSessionLifespanSeconds = getAuthSessionLifespan(realm);
 
-    AuthenticationSession authSession = AuthenticationSession.builder()
-                                        .parentSessionId(rootAuthenticationSession.getId())
-                                        .clientId(client.getId())
-                                        .timestamp(timestamp)
-                                        .tabId(generateTabId())
-                                        .build();
+    AuthenticationSession authSession =
+        AuthenticationSession.builder()
+            .parentSessionId(rootAuthenticationSession.getId())
+            .clientId(client.getId())
+            .timestamp(timestamp)
+            .tabId(generateTabId())
+            .build();
 
     rootAuthenticationSession.setTimestamp(timestamp);
-    rootAuthenticationSession.setExpiration(timestamp + TimeAdapter.fromSecondsToMilliseconds(authSessionLifespanSeconds));
+    rootAuthenticationSession.setExpiration(
+        timestamp + TimeAdapter.fromSecondsToMilliseconds(authSessionLifespanSeconds));
 
-    JpaCacheAuthSessionAdapter jpaCacheAuthSessionAdapter = entityToAdapterFunc(realm).apply(authSession);
+    JpaCacheAuthSessionAdapter jpaCacheAuthSessionAdapter =
+        entityToAdapterFunc(realm).apply(authSession);
     session.getContext().setAuthenticationSession(jpaCacheAuthSessionAdapter);
 
     return jpaCacheAuthSessionAdapter;
@@ -135,11 +147,11 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
   @Override
   public void removeAuthenticationSessionByTabId(String tabId) {
     if (rootAuthenticationSession.getAuthenticationSessions().remove(tabId) != null) {
-      if (entity.getAuthenticationSessions().isEmpty()) {
+      if (rootAuthenticationSession.getAuthenticationSessions().isEmpty()) {
         entityManager.remove(rootAuthenticationSession);
         entityManager.flush();
       } else {
-        rootAuthenticationSession.setTimestamp(Time.currentTime());
+        rootAuthenticationSession.setTimestamp(Time.currentTimeMillis());
       }
     }
   }
@@ -147,12 +159,10 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
   @Override
   public void restartSession(RealmModel realm) {
     rootAuthenticationSession.getAuthenticationSessions().clear();
-    rootAuthenticationSession.setTimestamp(Time.currentTime());
+    rootAuthenticationSession.setTimestamp(Time.currentTimeMillis());
   }
 
   private String generateTabId() {
-    return Base64Url.encode(SecretGenerator.getInstance()
-                            .randomBytes(8));
+    return Base64Url.encode(SecretGenerator.getInstance().randomBytes(8));
   }
-
 }

@@ -1,6 +1,10 @@
 package io.phasetwo.keycloak.jpacache.authSession;
 
 import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.AuthenticationSession;
+import jakarta.persistence.EntityManager;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
@@ -8,11 +12,6 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.RootAuthenticationSessionModel;
-import jakarta.persistence.EntityManager;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 
 @RequiredArgsConstructor
 public class JpaCacheAuthSessionAdapter implements AuthenticationSessionModel {
@@ -25,10 +24,6 @@ public class JpaCacheAuthSessionAdapter implements AuthenticationSessionModel {
   private boolean updated = false;
   private boolean deleted = false;
 
-  public void markDeleted() {
-    deleted = true;
-  }
-  
   @Override
   public String getTabId() {
     return authenticationSession.getTabId();
@@ -60,7 +55,9 @@ public class JpaCacheAuthSessionAdapter implements AuthenticationSessionModel {
 
   @Override
   public UserModel getAuthenticatedUser() {
-    return authenticationSession.getUserId() == null ? null : session.users().getUserById(getRealm(), authenticationSession.getUserId());
+    return authenticationSession.getUserId() == null
+        ? null
+        : session.users().getUserById(getRealm(), authenticationSession.getUserId());
   }
 
   @Override
@@ -69,12 +66,12 @@ public class JpaCacheAuthSessionAdapter implements AuthenticationSessionModel {
     authenticationSession.setUserId(userId);
     updated = true;
   }
-  
+
   @Override
   public Set<String> getRequiredActions() {
     return authenticationSession.getRequiredActions();
   }
-  
+
   @Override
   public void addRequiredAction(String action) {
     Objects.requireNonNull(action, "The provided action can't be null!");
@@ -112,7 +109,7 @@ public class JpaCacheAuthSessionAdapter implements AuthenticationSessionModel {
     }
     updated = true;
   }
-  
+
   @Override
   public Map<String, String> getUserSessionNotes() {
     return authenticationSession.getUserNotes();
@@ -135,7 +132,7 @@ public class JpaCacheAuthSessionAdapter implements AuthenticationSessionModel {
       removeAuthNote(name);
       return;
     }
-    
+
     authenticationSession.getAuthNotes().put(name, value);
     updated = true;
   }
@@ -163,7 +160,7 @@ public class JpaCacheAuthSessionAdapter implements AuthenticationSessionModel {
       removeClientNote(name);
       return;
     }
-    
+
     authenticationSession.getClientNotes().put(name, value);
     updated = true;
   }
@@ -173,7 +170,7 @@ public class JpaCacheAuthSessionAdapter implements AuthenticationSessionModel {
     authenticationSession.getClientNotes().remove(name);
     updated = true;
   }
-  
+
   @Override
   public Map<String, String> getClientNotes() {
     return authenticationSession.getClientNotes();
@@ -183,12 +180,12 @@ public class JpaCacheAuthSessionAdapter implements AuthenticationSessionModel {
   public void clearClientNotes() {
     authenticationSession.getClientNotes().clear();
   }
-  
+
   @Override
   public Set<String> getClientScopes() {
     return authenticationSession.getClientScopes();
   }
-  
+
   @Override
   public void setClientScopes(Set<String> clientScopes) {
     Objects.requireNonNull(clientScopes, "The provided client scopes set can't be null!");
@@ -211,23 +208,23 @@ public class JpaCacheAuthSessionAdapter implements AuthenticationSessionModel {
   public RealmModel getRealm() {
     return realm;
   }
-  
+
   @Override
   public ClientModel getClient() {
     return realm.getClientById(authenticationSession.getClientId());
   }
-  
+
   @Override
   public String getAction() {
     return authenticationSession.getAction();
   }
-  
+
   @Override
   public void setAction(String action) {
     authenticationSession.setAction(action);
     updated = true;
   }
-  
+
   @Override
   public String getProtocol() {
     return authenticationSession.getProtocol();
@@ -237,12 +234,5 @@ public class JpaCacheAuthSessionAdapter implements AuthenticationSessionModel {
   public void setProtocol(String method) {
     authenticationSession.setProtocol(method);
     updated = true;
-  }
-  
-  public void flush() {
-    if(updated && !deleted) {
-      authSessionRepository.insertOrUpdate(authenticationSession, parentSession.getEntity());
-      updated = false;
-    }
   }
 }

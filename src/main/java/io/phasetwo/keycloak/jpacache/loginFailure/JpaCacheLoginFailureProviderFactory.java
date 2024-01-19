@@ -1,20 +1,21 @@
 package io.phasetwo.keycloak.jpacache.loginFailure;
 
+import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
+import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
+
 import com.google.auto.service.AutoService;
-import io.phasetwo.keycloak.jpacache.connection.JpaCacheProvider;
+import jakarta.persistence.EntityManager;
 import org.keycloak.Config;
+import org.keycloak.connections.jpa.JpaConnectionProvider;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.UserLoginFailureProviderFactory;
 import org.keycloak.provider.EnvironmentDependentProviderFactory;
-import org.keycloak.connections.jpa.JpaConnectionProvider;
-import jakarta.persistence.EntityManager;
-import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
-import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
-import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
 
 @AutoService(UserLoginFailureProviderFactory.class)
-public class JpaCacheLoginFailureProviderFactory implements UserLoginFailureProviderFactory<JpaCacheLoginFailureProvider>, EnvironmentDependentProviderFactory {
+public class JpaCacheLoginFailureProviderFactory
+    implements UserLoginFailureProviderFactory<JpaCacheLoginFailureProvider>,
+        EnvironmentDependentProviderFactory {
 
   @Override
   public JpaCacheLoginFailureProvider create(KeycloakSession session) {
@@ -23,19 +24,13 @@ public class JpaCacheLoginFailureProviderFactory implements UserLoginFailureProv
   }
 
   @Override
-  public void init(Config.Scope config) {
-
-  }
+  public void init(Config.Scope config) {}
 
   @Override
-  public void postInit(KeycloakSessionFactory factory) {
-
-  }
+  public void postInit(KeycloakSessionFactory factory) {}
 
   @Override
-  public void close() {
-
-  }
+  public void close() {}
 
   @Override
   public String getId() {

@@ -5,12 +5,13 @@ public class CommunityProfiles {
   private static final String PROP_JPA_CACHE_ENABLED = "kc.community.jpa.cache.enabled";
 
   private static final boolean isJpaCacheEnabled;
-  
+
   static {
-    isJpaCacheEnabled = Boolean.parseBoolean(System.getenv(ENV_JPA_CACHE_ENABLED)) ||
-                        Boolean.parseBoolean(System.getProperty(PROP_JPA_CACHE_ENABLED));
+    isJpaCacheEnabled =
+        Boolean.parseBoolean(System.getenv(ENV_JPA_CACHE_ENABLED))
+            || Boolean.parseBoolean(System.getProperty(PROP_JPA_CACHE_ENABLED));
   }
-  
+
   public static boolean isJpaCacheEnabled() {
     return isJpaCacheEnabled;
   }

@@ -1,7 +1,11 @@
 package io.phasetwo.keycloak.jpacache.loginFailure;
 
-import io.phasetwo.keycloak.jpacache.loginFailure.persistence.LoginFailureRepository;
+import static org.keycloak.common.util.StackUtil.getShortStackTrace;
+
 import io.phasetwo.keycloak.jpacache.loginFailure.persistence.entities.LoginFailure;
+import jakarta.persistence.EntityManager;
+import java.util.Optional;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.jbosslog.JBossLog;
 import org.keycloak.models.KeycloakSession;
@@ -9,10 +13,6 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserLoginFailureModel;
 import org.keycloak.models.UserLoginFailureProvider;
 import org.keycloak.models.utils.KeycloakModelUtils;
-import java.util.function.Function;
-import java.util.Optional;
-import jakarta.persistence.EntityManager;
-import static org.keycloak.common.util.StackUtil.getShortStackTrace;
 
 @JBossLog
 @RequiredArgsConstructor
@@ -26,13 +26,12 @@ public class JpaCacheLoginFailureProvider implements UserLoginFailureProvider {
 
   @Override
   public UserLoginFailureModel getUserLoginFailure(RealmModel realm, String userId) {
-    return findByUserId(realm, userId)
-        .map(entityToAdapterFunc(realm))
-        .orElse(null);
+    return findByUserId(realm, userId).map(entityToAdapterFunc(realm)).orElse(null);
   }
 
   private Optional<LoginFailure> findByUserId(RealmModel realm, String userId) {
-    TypedQuery<LoginFailure> query = entityManager.createNamedQuery("findByUserId", LoginFailure.class);
+    TypedQuery<LoginFailure> query =
+        entityManager.createNamedQuery("findByUserId", LoginFailure.class);
     query.setParameter("realmId", realm.getId());
     query.setParameter("userId", userId);
     return query.getResultList().stream().findFirst();
@@ -45,11 +44,12 @@ public class JpaCacheLoginFailureProvider implements UserLoginFailureProvider {
     LoginFailure userLoginFailureEntity = findByUserId(realm, userId).orElse(null);
 
     if (userLoginFailureEntity == null) {
-      userLoginFailureEntity = LoginFailure.builder()
-                               .userId(userId)
-                               .realmId(realm.getId())
-                               .id(KeycloakModelUtils.generateId())
-                               .build();
+      userLoginFailureEntity =
+          LoginFailure.builder()
+              .userId(userId)
+              .realmId(realm.getId())
+              .id(KeycloakModelUtils.generateId())
+              .build();
       entityManager.persist(userLoginFailureEntity);
       entityManager.flush();
     }
@@ -60,12 +60,14 @@ public class JpaCacheLoginFailureProvider implements UserLoginFailureProvider {
   public void removeUserLoginFailure(RealmModel realm, String userId) {
     log.tracef("removeUserLoginFailure(%s, %s)%s", realm, userId, getShortStackTrace());
 
-    findByUserId(realm, userId).ifPresent(userLoginFailureEntity -> {
-        entityManager.remove(userLoginFailureEntity);
-        entityManager.flush();
-      });
+    findByUserId(realm, userId)
+        .ifPresent(
+            userLoginFailureEntity -> {
+              entityManager.remove(userLoginFailureEntity);
+              entityManager.flush();
+            });
   }
-  
+
   @Override
   public void removeAllUserLoginFailures(RealmModel realm) {
     Query query = entityManager.createNamedQuery("deleteByRealmId");

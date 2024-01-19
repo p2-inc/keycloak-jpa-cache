@@ -1,19 +1,19 @@
 package io.phasetwo.keycloak.jpacache.singleUseObject;
 
-import io.phasetwo.keycloak.jpacache.singleUseObject.persistence.SingleUseObjectRepository;
+import static org.keycloak.common.util.StackUtil.getShortStackTrace;
+
 import io.phasetwo.keycloak.jpacache.singleUseObject.persistence.entities.SingleUseObject;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.jbosslog.JBossLog;
-import org.keycloak.models.ModelDuplicateException;
-import org.keycloak.models.SingleUseObjectProvider;
 import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
-import jakarta.persistence.EntityManager;
-import static org.keycloak.common.util.StackUtil.getShortStackTrace;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.jbosslog.JBossLog;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.SingleUseObjectProvider;
 
 @JBossLog
 @RequiredArgsConstructor
@@ -31,12 +31,13 @@ public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider 
       throw new ModelDuplicateException("Single-use object entity exists: " + singleUseEntity.getKey());
     }
     */
-    
-    singleUseEntity = SingleUseObject.builder()
-                      .key(key)
-                      .expiresAt(getExpiration(lifespanSeconds))
-                      .notes(getInternalNotes(notes))
-                      .build();
+
+    SingleUseObject singleUseEntity =
+        SingleUseObject.builder()
+            .key(key)
+            .expiresAt(getExpiration(lifespanSeconds))
+            .notes(getInternalNotes(notes))
+            .build();
 
     entityManager.persist(singleUseEntity);
     entityManager.flush();
@@ -48,7 +49,7 @@ public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider 
     expiration.setTime(expiration.getTime() + ttl);
     return expiration;
   }
-  
+
   @Override
   public Map<String, String> get(String key) {
     log.tracef("get(%s)%s", key, getShortStackTrace());
@@ -61,12 +62,13 @@ public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider 
   }
 
   private SingleUseObject findByKeyAndExpiration(String key, Date now) {
-    TypedQuery<SingleUseObject> query = entityManager.createNamedQuery("findByKeyAndExpiration", SingleUseObject.class);
+    TypedQuery<SingleUseObject> query =
+        entityManager.createNamedQuery("findByKeyAndExpiration", SingleUseObject.class);
     query.setParameter("key", key);
     query.setParameter("now", new Date());
     return query.getSingleResult();
   }
-  
+
   @Override
   public Map<String, String> remove(String key) {
     log.tracef("remove(%s)%s", key, getShortStackTrace());
@@ -84,7 +86,7 @@ public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider 
   @Override
   public boolean replace(String key, Map<String, String> notes) {
     log.tracef("replace(%s)%s", key, getShortStackTrace());
-    
+
     SingleUseObject singleUseEntity = findByKeyAndExpiration(key, new Date());
     if (singleUseEntity != null) {
       singleUseEntity.setNotes(getInternalNotes(notes));
@@ -94,18 +96,19 @@ public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider 
   }
 
   @Override
-  public boolean putIfAbsent(String key, long lifespanInSeconds) {
+  public boolean putIfAbsent(String key, long lifespanSeconds) {
     log.tracef("putIfAbsent(%s)%s", key, getShortStackTrace());
-    
+
     SingleUseObject singleUseEntity = findByKeyAndExpiration(key, new Date());
     if (singleUseEntity != null) {
       return false;
     } else {
-      singleUseEntity = SingleUseObject.builder()
-                        .key(key)
-                        .expiresAt(getExpiration(lifespanSeconds))
-                        .notes(getInternalNotes(null))
-                        .build();
+      singleUseEntity =
+          SingleUseObject.builder()
+              .key(key)
+              .expiresAt(getExpiration(lifespanSeconds))
+              .notes(getInternalNotes(null))
+              .build();
       entityManager.persist(singleUseEntity);
       entityManager.flush();
       return true;
@@ -115,7 +118,7 @@ public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider 
   @Override
   public boolean contains(String key) {
     log.tracef("contains(%s)%s", key, getShortStackTrace());
-    
+
     SingleUseObject singleUseEntity = findByKeyAndExpiration(key, new Date());
 
     return singleUseEntity != null;
@@ -127,22 +130,25 @@ public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider 
   }
 
   private Map<String, String> getInternalNotes(Map<String, String> notes) {
-    Map<String, String> result = notes == null ? new HashMap<>() : notes.entrySet().stream()
-                                 .filter(e -> e.getValue() != null)
-                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    
+    Map<String, String> result =
+        notes == null
+            ? new HashMap<>()
+            : notes.entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
     if (result.isEmpty()) {
       result.put(EMPTY_NOTE, EMPTY_NOTE);
     }
-    
+
     return result;
   }
-  
+
   private Map<String, String> getExternalNotes(Map<String, String> notes) {
     Map<String, String> result = notes == null ? new HashMap<>() : new HashMap<>(notes);
-    
+
     result.remove(EMPTY_NOTE);
-    
+
     return result;
   }
 }

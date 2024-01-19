@@ -1,12 +1,12 @@
 package io.phasetwo.keycloak.jpacache;
 
-import java.util.Arrays;
-import java.util.List;
-import org.keycloak.connections.jpa.entityprovider.JpaEntityProvider;
 import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.*;
 import io.phasetwo.keycloak.jpacache.loginFailure.persistence.entities.*;
 import io.phasetwo.keycloak.jpacache.singleUseObject.persistence.entities.*;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.*;
+import java.util.Arrays;
+import java.util.List;
+import org.keycloak.connections.jpa.entityprovider.JpaEntityProvider;
 
 /** */
 public class JpaCacheEntityProvider implements JpaEntityProvider {
@@ -16,10 +16,8 @@ public class JpaCacheEntityProvider implements JpaEntityProvider {
     RootAuthenticationSession.class,
     LoginFailure.class,
     SingleUseObject.class,
-    AttributeToUserSessionMapping.class,
     AuthenticatedClientSessionValue.class,
-    UserSession.class,
-    UserSessionToAttributeMapping.class
+    UserSession.class
   };
 
   @Override
@@ -37,6 +35,6 @@ public class JpaCacheEntityProvider implements JpaEntityProvider {
 
   @Override
   public String getFactoryId() {
-    return OrganizationEntityProviderFactory.ID;
+    return JpaCacheEntityProviderFactory.ID;
   }
 }

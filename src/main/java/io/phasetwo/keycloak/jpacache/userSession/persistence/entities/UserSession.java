@@ -15,6 +15,7 @@ import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "CACHE_USER_SESSION")
+@NamedQueries({@NamedQuery(name = "findUserSessionsByUserId", query = "SELECT s FROM UserSession s WHERE s.realmId = :realmId AND s.userId = :userId"), @NamedQuery(name = "findUserSessionsByBrokerSessionId", query = "SELECT s FROM UserSession s WHERE s.realmId = :realmId AND s.brokerSessionId = :brokerSessionId"), @NamedQuery(name = "findUserSessionsByBrokerUserId", query = "SELECT s FROM BrokerUserSession s WHERE s.realmId = :realmId AND s.brokerUserId = :userId"), @NamedQuery(name = "findAllUserSessions", query = "SELECT s FROM UserSession WHERE s.realmId = :realmId"), @NamedQuery(name = "removeAllUserSessions", query = "SELECT s FROM UserSession WHERE s.realmId = :realmId"), @NamedQuery(name = "countOfflineUserSessions", query = "SELECT count(s) FROM UserSession WHERE s.realmId = :realmId AND s.offline = :offline")})
 @Entity
 public class UserSession implements ExpirableEntity {
   @Id
@@ -50,10 +51,10 @@ public class UserSession implements ExpirableEntity {
   private Long expiration;
 
   @Column(name = "OFFLINE")
-  private Boolean offline;
+  private Boolean offline = false;;
 
   @Column(name = "REMEMBER_ME")
-    private Boolean rememberMe;
+  private Boolean rememberMe = false;
 
   @Column(name = "LAST_SESSION_REFRESH")
   private Long lastSessionRefresh;
@@ -72,26 +73,30 @@ public class UserSession implements ExpirableEntity {
   @Builder.Default
   @ElementCollection
   @MapKeyColumn(name="")
-  @CollectionTable(name="CACHE_AUTH_SESSION", joinColumns=@JoinColumn(name="PARENT_SESSION_ID"))
+  @CollectionTable(name="CACHE_CLIENT_SESSION", joinColumns=@JoinColumn(name="USER_SESSION_ID"))
   private Map<String, AuthenticatedClientSessionValue> clientSessions = new HashMap<>();
 
-    private UserSessionModel.SessionPersistenceState persistenceState;
-
-    public boolean hasCorrespondingSession() {
-        return getNotes().containsKey(CORRESPONDING_SESSION_ID);
+  private UserSessionModel.SessionPersistenceState persistenceState;
+  
+  public boolean hasCorrespondingSession() {
+    return getNotes().containsKey(CORRESPONDING_SESSION_ID);
+  }
+  
+  public Map<String, String> getNotes() {
+    if (notes == null) {
+      notes = new HashMap<>();
     }
-
-    public Map<String, String> getNotes() {
-        if (notes == null) {
-            notes = new HashMap<>();
-        }
-        return notes;
+    return notes;
+  }
+  
+  public Map<String, AuthenticatedClientSessionValue> getClientSessions() {
+    if (clientSessions == null) {
+      clientSessions = new HashMap<>();
     }
-
-    public Map<String, AuthenticatedClientSessionValue> getClientSessions() {
-        if (clientSessions == null) {
-            clientSessions = new HashMap<>();
-        }
-        return clientSessions;
-    }
+    return clientSessions;
+  }
+  
+  public boolean isOffline() {
+    return offline != null ? offline.booleanValue() : false;
+  }
 }
