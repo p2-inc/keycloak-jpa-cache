@@ -194,8 +194,8 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
                    .getResultStream()
                    .map(AuthenticatedClientSessionValue::getParentSession)
                    .map(entityToAdapterFunc((realm)))
-                   )
-        .filter(Objects::nonNull);
+                   );
+    //        .filter(Objects::nonNull);
   }
 
   //xgp
@@ -414,8 +414,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     log.tracef("getOfflineUserSessionsStream(%s, %s)%s", realm, user, getShortStackTrace());
 
     return getUserSessionsStream(realm, user)
-        .filter(s -> s.isOffline())
-        .map(entityToAdapterFunc(realm));
+        .filter(s -> s.isOffline());
   }
 
   //xgp
@@ -423,9 +422,12 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
   public UserSessionModel getOfflineUserSessionByBrokerSessionId(RealmModel realm, String brokerSessionId) {
     log.tracef("getOfflineUserSessionByBrokerSessionId(%s, %s)%s", realm, brokerSessionId, getShortStackTrace());
 
-    return getUserSessionByBrokerSessionId(realm, brokerSessionId)
-        .filter(s -> s.isOffline())
-        .map(entityToAdapterFunc(realm)).findFirst().orElse(null);
+    UserSessionModel s = getUserSessionByBrokerSessionId(realm, brokerSessionId);
+    if (s != null && s.isOffline()) {
+      return s;
+    } else {
+      return null;
+    }
   }
 
   //xgp
@@ -434,8 +436,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     log.tracef("getOfflineUserSessionByBrokerUserIdStream(%s, %s)%s", realm, brokerUserId, getShortStackTrace());
 
     return getUserSessionByBrokerUserIdStream(realm, brokerUserId)
-        .filter(s -> s.isOffline())
-        .map(entityToAdapterFunc(realm));
+        .filter(s -> s.isOffline());
   }
 
   //xgp TODO

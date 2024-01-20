@@ -54,7 +54,7 @@ public class AuthenticationSession {
   private String protocol;
 
   @Column(name = "TIMESTAMP")
-  private Date timestamp;
+  private Long timestamp;
 
   @Builder.Default
   @ElementCollection

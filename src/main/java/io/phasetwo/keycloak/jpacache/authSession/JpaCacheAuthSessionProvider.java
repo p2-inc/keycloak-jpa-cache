@@ -94,7 +94,7 @@ public class JpaCacheAuthSessionProvider implements AuthenticationSessionProvide
         "getRootAuthenticationSession(%s, %s)%s",
         realm.getName(), authenticationSessionId, getShortStackTrace());
 
-    findRootAuthSession(realm, authenticationSessionId)
+    return findRootAuthSession(realm, authenticationSessionId)
         .map(entityToAdapterFunc(realm))
         .orElse(null);
   }

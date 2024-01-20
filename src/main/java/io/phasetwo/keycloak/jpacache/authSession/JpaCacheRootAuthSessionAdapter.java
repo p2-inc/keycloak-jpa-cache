@@ -127,7 +127,7 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
 
     AuthenticationSession authSession =
         AuthenticationSession.builder()
-            .parentSessionId(rootAuthenticationSession.getId())
+            .parentSession(rootAuthenticationSession)
             .clientId(client.getId())
             .timestamp(timestamp)
             .tabId(generateTabId())
