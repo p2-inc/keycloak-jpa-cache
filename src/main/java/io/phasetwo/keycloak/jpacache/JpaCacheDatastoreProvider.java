@@ -1,6 +1,5 @@
 package io.phasetwo.keycloak.jpacache;
 
-
 import lombok.extern.jbosslog.JBossLog;
 import org.keycloak.models.*;
 import org.keycloak.sessions.AuthenticationSessionProvider;

@@ -7,7 +7,6 @@ import io.phasetwo.keycloak.jpacache.loginFailure.JpaCacheLoginFailureProviderFa
 import io.phasetwo.keycloak.jpacache.testsuite.Config;
 import io.phasetwo.keycloak.jpacache.testsuite.KeycloakModelParameters;
 import io.phasetwo.keycloak.jpacache.userSession.JpaCacheUserSessionProviderFactory;
-import io.phasetwo.keycloak.mapstorage.deploymentstate.MapDeploymentStateProviderFactory;
 import io.phasetwo.keycloak.mapstorage.keys.MapPublicKeyStorageProviderFactory;
 import java.util.Set;
 import org.keycloak.authorization.jpa.store.JPAAuthorizationStoreFactory;
@@ -28,13 +27,18 @@ import org.keycloak.device.DeviceRepresentationSpi;
 import org.keycloak.events.jpa.JpaEventStoreProviderFactory;
 import org.keycloak.keys.*;
 import org.keycloak.migration.MigrationProviderFactory;
+import org.keycloak.migration.MigrationSpi;
 import org.keycloak.models.*;
+import org.keycloak.models.DeploymentStateSpi;
+import org.keycloak.models.dblock.DBLockSpi;
 import org.keycloak.models.jpa.*;
+import org.keycloak.models.jpa.JpaDeploymentStateProviderFactory;
 import org.keycloak.models.jpa.session.JpaUserSessionPersisterProviderFactory;
 import org.keycloak.models.locking.NoneGlobalLockProviderFactory;
 import org.keycloak.models.session.UserSessionPersisterSpi;
 import org.keycloak.policy.*;
 import org.keycloak.protocol.LoginProtocolFactory;
+import org.keycloak.protocol.LoginProtocolSpi;
 import org.keycloak.provider.ProviderFactory;
 import org.keycloak.provider.Spi;
 import org.keycloak.services.clientpolicy.ClientPolicyManagerSpi;
@@ -54,11 +58,15 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(ClientRegistrationPolicySpi.class)
           .add(CredentialSpi.class)
           .add(DatastoreSpi.class)
+          .add(DeploymentStateSpi.class)
           .add(DeviceRepresentationSpi.class)
+          .add(DBLockSpi.class)
           .add(JpaConnectionSpi.class)
           .add(JpaUpdaterSpi.class)
           .add(KeySpi.class)
           .add(LiquibaseConnectionSpi.class)
+          .add(LoginProtocolSpi.class)
+          .add(MigrationSpi.class)
           .add(PasswordHashSpi.class)
           .add(PasswordPolicyManagerSpi.class)
           .add(PasswordPolicySpi.class)
@@ -106,8 +114,8 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(LegacyDatastoreProviderFactory.class)
           .add(LiquibaseConnectionProviderFactory.class)
           .add(LiquibaseDBLockProviderFactory.class)
+          .add(JpaDeploymentStateProviderFactory.class)
           .add(LoginProtocolFactory.class)
-          .add(MapDeploymentStateProviderFactory.class)
           .add(MapPublicKeyStorageProviderFactory.class)
           .add(MaxClientsClientRegistrationPolicyFactory.class)
           .add(MigrationProviderFactory.class)

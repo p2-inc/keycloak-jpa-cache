@@ -697,7 +697,7 @@ public class UserSessionProviderModelTest extends KeycloakModelTest {
                 new HashSet<>(session.getAuthenticatedClientSessions().keySet());
             clientUUIDS.remove(
                 thirdPartyClientUUID); // This client will be later removed, hence his
-                                       // clientSessions too
+            // clientSessions too
             clientSessionsKept.put(session.getId(), clientUUIDS);
           }
 
