@@ -2,8 +2,8 @@ package io.phasetwo.keycloak.jpacache.userSession;
 
 import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setClientSessionExpiration;
 
-import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.AuthenticatedClientSessionValue;
+import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import jakarta.persistence.EntityManager;
 import java.util.Map;
 import lombok.AllArgsConstructor;

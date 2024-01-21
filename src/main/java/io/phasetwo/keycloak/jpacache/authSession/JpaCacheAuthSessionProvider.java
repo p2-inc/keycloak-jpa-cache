@@ -8,7 +8,6 @@ import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.Authentica
 import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.RootAuthenticationSession;
 import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import java.util.Map;
 import java.util.Objects;
@@ -19,7 +18,6 @@ import lombok.extern.jbosslog.JBossLog;
 import org.keycloak.common.util.Time;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.ModelDuplicateException;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.sessions.AuthenticationSessionCompoundId;
@@ -143,7 +141,7 @@ public class JpaCacheAuthSessionProvider implements AuthenticationSessionProvide
     // Just let them expire...
   }
 
-  //xgp TODO
+  // xgp TODO
   @Override
   public void updateNonlocalSessionAuthNotes(
       AuthenticationSessionCompoundId compoundId, Map<String, String> authNotesFragment) {

@@ -4,8 +4,8 @@ import static org.keycloak.common.util.StackUtil.getShortStackTrace;
 
 import io.phasetwo.keycloak.jpacache.loginFailure.persistence.entities.LoginFailure;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
 import jakarta.persistence.Query;
+import jakarta.persistence.TypedQuery;
 import java.util.Optional;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;

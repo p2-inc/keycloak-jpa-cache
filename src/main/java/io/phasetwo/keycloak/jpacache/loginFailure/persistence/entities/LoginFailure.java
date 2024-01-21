@@ -1,7 +1,6 @@
 package io.phasetwo.keycloak.jpacache.loginFailure.persistence.entities;
 
 import jakarta.persistence.*;
-import java.util.Date;
 import lombok.*;
 
 @EqualsAndHashCode(of = "id")

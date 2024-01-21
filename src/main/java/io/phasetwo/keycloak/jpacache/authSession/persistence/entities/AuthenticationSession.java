@@ -1,7 +1,6 @@
 package io.phasetwo.keycloak.jpacache.authSession.persistence.entities;
 
 import jakarta.persistence.*;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;

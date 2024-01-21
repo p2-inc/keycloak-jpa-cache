@@ -50,10 +50,20 @@
     <surefire.memory.Xmx>2048m</surefire.memory.Xmx>
     <surefire.memory.metaspace>96m</surefire.memory.metaspace>
     <surefire.memory.metaspace.max>512m</surefire.memory.metaspace.max>
-    <surefire.memory.settings>-Xms${surefire.memory.Xms} -Xmx${surefire.memory.Xmx}
-    -XX:MetaspaceSize=${surefire.memory.metaspace} -XX:MaxMetaspaceSize=${surefire.memory.metaspace.max}
-    </surefire.memory.settings>
+    <surefire.memory.settings>-Xms${surefire.memory.Xms} -Xmx${surefire.memory.Xmx} -XX:MetaspaceSize=${surefire.memory.metaspace} -XX:MaxMetaspaceSize=${surefire.memory.metaspace.max}</surefire.memory.settings>
     <surefire.system.args></surefire.system.args>
+
+    <!-- testing -->
+    <keycloak.connectionsJpa.driver>org.h2.Driver</keycloak.connectionsJpa.driver>
+    <keycloak.connectionsJpa.database>keycloak</keycloak.connectionsJpa.database>
+    <keycloak.connectionsJpa.user>sa</keycloak.connectionsJpa.user>
+    <keycloak.connectionsJpa.password></keycloak.connectionsJpa.password>
+    <keycloak.connectionsJpa.url>jdbc:h2:mem:test;DB_CLOSE_DELAY=-1</keycloak.connectionsJpa.url>
+    <jdbc.mvn.groupId>com.h2database</jdbc.mvn.groupId>
+    <jdbc.mvn.artifactId>h2</jdbc.mvn.artifactId>
+    <jdbc.mvn.version>2.2.224</jdbc.mvn.version>
+    <jacoco.skip>true</jacoco.skip>
+    <keycloak.userSessions.infinispan.preloadOfflineSessionsFromDatabase>false</keycloak.userSessions.infinispan.preloadOfflineSessionsFromDatabase>
   </properties>
 
   <build>
@@ -133,6 +143,7 @@
         <version>3.1.2</version>
         <configuration>
           <forkMode>once</forkMode>
+	  <forkCount>0</forkCount>
           <argLine>@{argLine}</argLine>
           <runOrder>alphabetical</runOrder>
           <failIfNoSpecifiedTests>false</failIfNoSpecifiedTests>
@@ -141,8 +152,14 @@
             <!-- keycloak.model.parameters lists parameter classes from
                  org.keycloak.model.parameters package and determine enabled providers -->
             <kc.community.jpa.cache.enabled>true</kc.community.jpa.cache.enabled>
-            <keycloak.model.parameters>Map,CassandraMapStorage</keycloak.model.parameters>
+            <keycloak.model.parameters>JpaCacheParameters</keycloak.model.parameters>
+            <keycloak.connectionsJpa.default.driver>${keycloak.connectionsJpa.driver}</keycloak.connectionsJpa.default.driver>
+            <keycloak.connectionsJpa.default.database>${keycloak.connectionsJpa.database}</keycloak.connectionsJpa.default.database>
+            <keycloak.connectionsJpa.default.user>${keycloak.connectionsJpa.user}</keycloak.connectionsJpa.default.user>
+            <keycloak.connectionsJpa.default.password>${keycloak.connectionsJpa.password}</keycloak.connectionsJpa.default.password>
+            <keycloak.connectionsJpa.default.url>${keycloak.connectionsJpa.url}</keycloak.connectionsJpa.default.url>
             <log4j.configuration>file:${project.build.directory}/test-classes/log4j.properties</log4j.configuration> <!-- for the logging to properly work with tests in the 'other' module -->
+            <keycloak.userSessions.infinispan.preloadOfflineSessionsFromDatabase>${keycloak.userSessions.infinispan.preloadOfflineSessionsFromDatabase}</keycloak.userSessions.infinispan.preloadOfflineSessionsFromDatabase>
             <keycloak.profile.feature.authorization>disabled</keycloak.profile.feature.authorization>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <org.jboss.logging.provider>log4j</org.jboss.logging.provider>
@@ -237,8 +254,14 @@
       <artifactId>keycloak-common</artifactId>
       <version>${keycloak.version}</version>
     </dependency>
-
-        <!-- javax/jakarta apis -->
+    <dependency> <!-- if you're getting a missing dependency error here, you need to install keycloak from source locally, as this never hits maven central -->
+      <groupId>org.keycloak</groupId>
+      <artifactId>keycloak-testsuite-utils</artifactId>
+      <version>${keycloak.version}</version>
+      <scope>test</scope>
+    </dependency>
+    
+    <!-- javax/jakarta apis -->
     <dependency>
       <groupId>jakarta.persistence</groupId>
       <artifactId>jakarta.persistence-api</artifactId>

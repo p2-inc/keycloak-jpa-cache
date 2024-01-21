@@ -15,9 +15,9 @@
  */
 package io.phasetwo.keycloak.jpacache.userSession.expiration;
 
-import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.AuthenticatedClientSessionValue;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.UserSession;
+import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import org.keycloak.common.util.Time;
 import org.keycloak.models.ClientModel;
 import org.keycloak.protocol.oidc.OIDCConfigAttributes;

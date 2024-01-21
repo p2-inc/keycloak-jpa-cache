@@ -6,7 +6,6 @@ import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_P
 
 import com.google.auto.service.AutoService;
 import lombok.extern.jbosslog.JBossLog;
-import org.keycloak.Config;
 import org.keycloak.models.*;
 import org.keycloak.storage.DatastoreProvider;
 import org.keycloak.storage.DatastoreProviderFactory;
@@ -25,20 +24,28 @@ public class JpaCacheDatastoreProviderFactory extends LegacyDatastoreProviderFac
 
   @Override
   public DatastoreProvider create(KeycloakSession session) {
+    log.infof("Creating JpaCacheDatastoreProvider...");
     return createProviderCached(
         session, DatastoreProvider.class, () -> new JpaCacheDatastoreProvider(this, session));
   }
 
+  /*
   @Override
   public void init(Config.Scope scope) {
-    log.info("Using cassandra datastore...");
+    super.init(scope);
+    log.info("Using JPA cache datastore...");
   }
 
   @Override
-  public void postInit(KeycloakSessionFactory keycloakSessionFactory) {}
+  public void postInit(KeycloakSessionFactory keycloakSessionFactory) {
+    super.postInit(keycloakSessionFactory);
+  }
 
   @Override
-  public void close() {}
+  public void close() {
+    super.close();
+  }
+  */
 
   @Override
   public int order() {

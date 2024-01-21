@@ -1,13 +1,13 @@
 package io.phasetwo.keycloak.jpacache.userSession.persistence.entities;
 
-import lombok.*;
-import jakarta.persistence.*;
-import java.util.Date;
-import org.keycloak.models.UserSessionModel;
+import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
+
 import io.phasetwo.keycloak.mapstorage.common.ExpirableEntity;
+import jakarta.persistence.*;
 import java.util.HashMap;
 import java.util.Map;
-import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
+import lombok.*;
+import org.keycloak.models.UserSessionModel;
 
 @EqualsAndHashCode(of = "id")
 @Builder(toBuilder = true)
@@ -15,7 +15,29 @@ import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "CACHE_USER_SESSION")
-@NamedQueries({@NamedQuery(name = "findUserSessionsByUserId", query = "SELECT s FROM UserSession s WHERE s.realmId = :realmId AND s.userId = :userId"), @NamedQuery(name = "findUserSessionsByBrokerSessionId", query = "SELECT s FROM UserSession s WHERE s.realmId = :realmId AND s.brokerSessionId = :brokerSessionId"), @NamedQuery(name = "findUserSessionsByBrokerUserId", query = "SELECT s FROM BrokerUserSession s WHERE s.realmId = :realmId AND s.brokerUserId = :userId"), @NamedQuery(name = "findAllUserSessions", query = "SELECT s FROM UserSession WHERE s.realmId = :realmId"), @NamedQuery(name = "removeAllUserSessions", query = "SELECT s FROM UserSession WHERE s.realmId = :realmId"), @NamedQuery(name = "countOfflineUserSessions", query = "SELECT count(s) FROM UserSession WHERE s.realmId = :realmId AND s.offline = :offline")})
+@NamedQueries({
+  @NamedQuery(
+      name = "findUserSessionsByUserId",
+      query = "SELECT s FROM UserSession s WHERE s.realmId = :realmId AND s.userId = :userId"),
+  @NamedQuery(
+      name = "findUserSessionsByBrokerSessionId",
+      query =
+          "SELECT s FROM UserSession s WHERE s.realmId = :realmId AND s.brokerSessionId = :brokerSessionId"),
+  @NamedQuery(
+      name = "findUserSessionsByBrokerUserId",
+      query =
+          "SELECT s FROM BrokerUserSession s WHERE s.realmId = :realmId AND s.brokerUserId = :userId"),
+  @NamedQuery(
+      name = "findAllUserSessions",
+      query = "SELECT s FROM UserSession WHERE s.realmId = :realmId"),
+  @NamedQuery(
+      name = "removeAllUserSessions",
+      query = "SELECT s FROM UserSession WHERE s.realmId = :realmId"),
+  @NamedQuery(
+      name = "countOfflineUserSessions",
+      query =
+          "SELECT count(s) FROM UserSession WHERE s.realmId = :realmId AND s.offline = :offline")
+})
 @Entity
 public class UserSession implements ExpirableEntity {
   @Id
@@ -25,7 +47,7 @@ public class UserSession implements ExpirableEntity {
 
   @Column(name = "REALM_ID")
   private String realmId;
-  
+
   @Column(name = "USER_ID")
   private String userId;
 
@@ -45,13 +67,15 @@ public class UserSession implements ExpirableEntity {
   private String brokerUserId;
 
   @Column(name = "TIMESTAMP")
-    private Long timestamp;
+  private Long timestamp;
 
   @Column(name = "EXPIRATION")
   private Long expiration;
 
   @Column(name = "OFFLINE")
-  private Boolean offline = false;;
+  private Boolean offline = false;
+
+  ;
 
   @Column(name = "REMEMBER_ME")
   private Boolean rememberMe = false;
@@ -65,37 +89,41 @@ public class UserSession implements ExpirableEntity {
 
   @Builder.Default
   @ElementCollection
-  @MapKeyColumn(name="NAME")
-  @CollectionTable(name="CACHE_USER_SESSION_NOTE", joinColumns=@JoinColumn(name="USER_SESSION_ID"))
+  @MapKeyColumn(name = "NAME")
+  @CollectionTable(
+      name = "CACHE_USER_SESSION_NOTE",
+      joinColumns = @JoinColumn(name = "USER_SESSION_ID"))
   @Column(name = "NOTE")
   private Map<String, String> notes = new HashMap<>();
 
   @Builder.Default
   @ElementCollection
-  @MapKeyColumn(name="")
-  @CollectionTable(name="CACHE_CLIENT_SESSION", joinColumns=@JoinColumn(name="USER_SESSION_ID"))
+  @MapKeyColumn(name = "")
+  @CollectionTable(
+      name = "CACHE_CLIENT_SESSION",
+      joinColumns = @JoinColumn(name = "USER_SESSION_ID"))
   private Map<String, AuthenticatedClientSessionValue> clientSessions = new HashMap<>();
 
   private UserSessionModel.SessionPersistenceState persistenceState;
-  
+
   public boolean hasCorrespondingSession() {
     return getNotes().containsKey(CORRESPONDING_SESSION_ID);
   }
-  
+
   public Map<String, String> getNotes() {
     if (notes == null) {
       notes = new HashMap<>();
     }
     return notes;
   }
-  
+
   public Map<String, AuthenticatedClientSessionValue> getClientSessions() {
     if (clientSessions == null) {
       clientSessions = new HashMap<>();
     }
     return clientSessions;
   }
-  
+
   public boolean isOffline() {
     return offline != null ? offline.booleanValue() : false;
   }
