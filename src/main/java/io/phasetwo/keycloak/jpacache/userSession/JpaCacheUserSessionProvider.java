@@ -212,7 +212,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     log.tracef("getUserSessionsStream(%s, %s)%s", realm, user, getShortStackTrace());
 
     TypedQuery<UserSession> query =
-        entityManager.createNamedQuery("findUserSessionsByUserId", UserSession.class);
+        entityManager.createNamedQuery("findUserSessionsByUserId2", UserSession.class);
     query.setParameter("realmId", realm.getId());
     query.setParameter("userId", user.getId());
     return query.getResultStream().map(entityToAdapterFunc((realm)));

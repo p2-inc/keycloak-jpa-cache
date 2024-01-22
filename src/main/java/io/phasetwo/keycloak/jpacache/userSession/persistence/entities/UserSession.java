@@ -17,7 +17,7 @@ import org.keycloak.models.UserSessionModel;
 @Table(name = "CACHE_USER_SESSION")
 @NamedQueries({
   @NamedQuery(
-      name = "findUserSessionsByUserId",
+      name = "findUserSessionsByUserId2",
       query = "SELECT s FROM UserSession s WHERE s.realmId = :realmId AND s.userId = :userId"),
   @NamedQuery(
       name = "findUserSessionsByBrokerSessionId",
@@ -74,8 +74,6 @@ public class UserSession implements ExpirableEntity {
 
   @Column(name = "OFFLINE")
   private Boolean offline = false;
-
-  ;
 
   @Column(name = "REMEMBER_ME")
   private Boolean rememberMe = false;
