@@ -189,7 +189,7 @@
       <column name="ID" type="VARCHAR(36)">
         <constraints primaryKey="true" primaryKeyName="PK_CACHE_SINGLE_USE_OBJECT" nullable="false"/>
       </column>
-      <column name="KEY" type="VARCHAR(1024)">
+      <column name="OBJ_KEY" type="VARCHAR(1024)">
 	<constraints nullable="false" unique="true" uniqueConstraintName="UQ_CACHE_SINGLE_USE_OBJECT_KEY"/>
       </column>
       <column name="EXPIRES_AT" type="TIMESTAMP"/>

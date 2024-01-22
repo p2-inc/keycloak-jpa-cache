@@ -38,10 +38,7 @@ public class RootAuthenticationSession implements ExpirableEntity {
   private Long expiration;
 
   @Builder.Default
-  @ElementCollection
+  @OneToMany(mappedBy = "parentSession")
   @MapKeyColumn(name = "TAB_ID")
-  @CollectionTable(
-      name = "CACHE_AUTH_SESSION",
-      joinColumns = @JoinColumn(name = "PARENT_SESSION_ID"))
   private Map<String, AuthenticationSession> authenticationSessions = new HashMap<>();
 }

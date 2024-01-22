@@ -17,10 +17,10 @@ import org.keycloak.sessions.CommonClientSessionModel;
   @NamedQuery(
       name = "findAuthSessionsByCompoundId",
       query =
-          "SELECT s FROM AuthenticationSession s WHERE s.parentSessionId = :parentSessionId AND s.tabId = :tabId AND s.clientId = :clientId"),
+          "SELECT s FROM AuthenticationSession s WHERE s.parentSession = :parentSession AND s.tabId = :tabId AND s.clientId = :clientId"),
   @NamedQuery(
-      name = "findAuthSessionsByRootSessionId",
-      query = "SELECT s FROM AuthenticationSession s WHERE s.parentSessionId = :parentSessionId")
+      name = "findAuthSessionsByRootSession",
+      query = "SELECT s FROM AuthenticationSession s WHERE s.parentSession = :parentSession")
 })
 @Table(name = "CACHE_AUTH_SESSION")
 @Entity

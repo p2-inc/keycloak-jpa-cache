@@ -16,7 +16,7 @@ import lombok.*;
   @NamedQuery(
       name = "findClientSessionsByClientId",
       query =
-          "SELECT s FROM AuthenticatedClientSessionValue s WHERE s.realmId = :realmId AND s.clientId = :clientId")
+          "SELECT s FROM AuthenticatedClientSessionValue s WHERE s.parentSession.realmId = :realmId AND s.clientId = :clientId")
 })
 @Entity
 public class AuthenticatedClientSessionValue implements ExpirableEntity {

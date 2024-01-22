@@ -26,17 +26,17 @@ import org.keycloak.models.UserSessionModel;
   @NamedQuery(
       name = "findUserSessionsByBrokerUserId",
       query =
-          "SELECT s FROM BrokerUserSession s WHERE s.realmId = :realmId AND s.brokerUserId = :userId"),
+          "SELECT s FROM UserSession s WHERE s.realmId = :realmId AND s.brokerUserId = :brokerUserId"),
   @NamedQuery(
       name = "findAllUserSessions",
-      query = "SELECT s FROM UserSession WHERE s.realmId = :realmId"),
+      query = "SELECT s FROM UserSession s WHERE s.realmId = :realmId"),
   @NamedQuery(
       name = "removeAllUserSessions",
-      query = "SELECT s FROM UserSession WHERE s.realmId = :realmId"),
+      query = "SELECT s FROM UserSession s WHERE s.realmId = :realmId"),
   @NamedQuery(
       name = "countOfflineUserSessions",
       query =
-          "SELECT count(s) FROM UserSession WHERE s.realmId = :realmId AND s.offline = :offline")
+          "SELECT count(s) FROM UserSession s WHERE s.realmId = :realmId AND s.offline = :offline")
 })
 @Entity
 public class UserSession implements ExpirableEntity {
@@ -95,11 +95,8 @@ public class UserSession implements ExpirableEntity {
   private Map<String, String> notes = new HashMap<>();
 
   @Builder.Default
-  @ElementCollection
-  @MapKeyColumn(name = "")
-  @CollectionTable(
-      name = "CACHE_CLIENT_SESSION",
-      joinColumns = @JoinColumn(name = "USER_SESSION_ID"))
+  @OneToMany(mappedBy = "parentSession")
+  @MapKeyColumn(name = "CLIENT_ID")
   private Map<String, AuthenticatedClientSessionValue> clientSessions = new HashMap<>();
 
   private UserSessionModel.SessionPersistenceState persistenceState;

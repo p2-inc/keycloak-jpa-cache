@@ -1,10 +1,12 @@
 package io.phasetwo.keycloak.jpacache.singleUseObject;
 
 import static org.keycloak.common.util.StackUtil.getShortStackTrace;
+import static org.keycloak.models.utils.KeycloakModelUtils.generateId;
 
 import io.phasetwo.keycloak.jpacache.singleUseObject.persistence.entities.SingleUseObject;
 import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
 import jakarta.persistence.TypedQuery;
 import java.util.Date;
 import java.util.HashMap;
@@ -34,6 +36,7 @@ public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider 
 
     SingleUseObject singleUseEntity =
         SingleUseObject.builder()
+            .id(generateId())
             .key(key)
             .expiresAt(getExpiration(lifespanSeconds))
             .notes(getInternalNotes(notes))
@@ -66,7 +69,11 @@ public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider 
         entityManager.createNamedQuery("findByKeyAndExpiration", SingleUseObject.class);
     query.setParameter("key", key);
     query.setParameter("now", new Date());
-    return query.getSingleResult();
+    try {
+      return query.getSingleResult();
+    } catch (NoResultException e) {
+    }
+    return null;
   }
 
   @Override
@@ -105,6 +112,7 @@ public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider 
     } else {
       singleUseEntity =
           SingleUseObject.builder()
+              .id(generateId())
               .key(key)
               .expiresAt(getExpiration(lifespanSeconds))
               .notes(getInternalNotes(null))

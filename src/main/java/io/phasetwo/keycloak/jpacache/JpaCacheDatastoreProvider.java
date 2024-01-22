@@ -16,19 +16,6 @@ public class JpaCacheDatastoreProvider extends LegacyDatastoreProvider {
   }
 
   @Override
-  public RealmProvider realms() {
-    RealmProvider rp = super.realms();
-    log.infof("RealmProvider from superclass %s", rp);
-    try {
-      RealmModel r = rp.getRealmByName("master");
-      log.infof("master realm %s", r);
-    } catch (Exception e) {
-      log.warn("realms()", e);
-    }
-    return rp;
-  }
-
-  @Override
   public SingleUseObjectProvider singleUseObjects() {
     return session.getProvider(SingleUseObjectProvider.class);
   }

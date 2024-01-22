@@ -25,7 +25,7 @@ public class SingleUseObject {
   @Access(AccessType.PROPERTY)
   protected String id;
 
-  @Column(name = "KEY")
+  @Column(name = "OBJ_KEY")
   private String key;
 
   @Temporal(TemporalType.TIMESTAMP)
