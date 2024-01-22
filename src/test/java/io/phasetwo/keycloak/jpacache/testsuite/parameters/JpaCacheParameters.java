@@ -1,9 +1,10 @@
 package io.phasetwo.keycloak.jpacache.testsuite.parameters;
 
 import com.google.common.collect.ImmutableSet;
-import io.phasetwo.keycloak.jpacache.JpaCacheDatastoreProviderFactory;
+import io.phasetwo.keycloak.jpacache.*;
 import io.phasetwo.keycloak.jpacache.authSession.JpaCacheAuthSessionProviderFactory;
 import io.phasetwo.keycloak.jpacache.loginFailure.JpaCacheLoginFailureProviderFactory;
+import io.phasetwo.keycloak.jpacache.singleUseObject.JpaCacheSingleUseObjectProviderFactory;
 import io.phasetwo.keycloak.jpacache.testsuite.Config;
 import io.phasetwo.keycloak.jpacache.testsuite.KeycloakModelParameters;
 import io.phasetwo.keycloak.jpacache.userSession.JpaCacheUserSessionProviderFactory;
@@ -12,6 +13,7 @@ import java.util.Set;
 import org.keycloak.authorization.jpa.store.JPAAuthorizationStoreFactory;
 import org.keycloak.broker.provider.IdentityProviderFactory;
 import org.keycloak.connections.jpa.*;
+import org.keycloak.connections.jpa.entityprovider.JpaEntitySpi;
 import org.keycloak.connections.jpa.updater.JpaUpdaterProviderFactory;
 import org.keycloak.connections.jpa.updater.JpaUpdaterSpi;
 import org.keycloak.connections.jpa.updater.liquibase.conn.LiquibaseConnectionProviderFactory;
@@ -62,6 +64,7 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(DeviceRepresentationSpi.class)
           .add(DBLockSpi.class)
           .add(JpaConnectionSpi.class)
+          .add(JpaEntitySpi.class)
           .add(JpaUpdaterSpi.class)
           .add(KeySpi.class)
           .add(LiquibaseConnectionSpi.class)
@@ -99,7 +102,9 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(JPAAuthorizationStoreFactory.class)
           .add(JpaCacheAuthSessionProviderFactory.class)
           .add(JpaCacheDatastoreProviderFactory.class)
+          .add(JpaCacheEntityProviderFactory.class)
           .add(JpaCacheLoginFailureProviderFactory.class)
+          .add(JpaCacheSingleUseObjectProviderFactory.class)
           .add(JpaCacheUserSessionProviderFactory.class)
           .add(JpaClientProviderFactory.class)
           .add(JpaClientScopeProviderFactory.class)
@@ -125,7 +130,6 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(Pbkdf2Sha256PasswordHashProviderFactory.class)
           .add(ProtocolMappersClientRegistrationPolicyFactory.class)
           .add(ScopeClientRegistrationPolicyFactory.class)
-          .add(SingleUseObjectProviderFactory.class)
           .add(TrustedHostClientRegistrationPolicyFactory.class)
           .build();
 

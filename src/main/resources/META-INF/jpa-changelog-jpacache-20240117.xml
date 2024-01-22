@@ -4,7 +4,7 @@
   <changeSet author="xgp" id="20240117-101">
     <createTable tableName="CACHE_ROOT_AUTH_SESSION">
       <column name="ID" type="VARCHAR(36)">
-        <constraints nullable="false"/>
+        <constraints primaryKey="true" primaryKeyName="PK_CACHE_ROOT_AUTH_SESSION" nullable="false"/>
       </column>
       <column name="REALM_ID" type="VARCHAR(36)"/>
       <column name="EXPIRATION" type="BIGINT"/>
@@ -15,7 +15,7 @@
   <changeSet author="xgp" id="20240117-201">
     <createTable tableName="CACHE_AUTH_SESSION">
       <column name="ID" type="VARCHAR(36)">
-        <constraints nullable="false"/>
+        <constraints primaryKey="true" primaryKeyName="PK_CACHE_AUTH_SESSION" nullable="false"/>
       </column>
       <column name="PARENT_SESSION_ID" type="VARCHAR(36)"/>
       <column name="TAB_ID" type="VARCHAR(36)"/>
@@ -108,7 +108,7 @@
   <changeSet author="xgp" id="20240117-301">
     <createTable tableName="CACHE_USER_SESSION">
       <column name="ID" type="VARCHAR(36)">
-        <constraints nullable="false"/>
+        <constraints primaryKey="true" primaryKeyName="PK_CACHE_USER_SESSION" nullable="false"/>
       </column>
       <column name="AUTH_METHOD" type="VARCHAR(36)"/>
       <column name="BROKER_SESSION_ID" type="VARCHAR(36)"/>
@@ -141,7 +141,7 @@
   <changeSet author="xgp" id="20240117-303">
     <createTable tableName="CACHE_CLIENT_SESSION">
       <column name="ID" type="VARCHAR(36)">
-        <constraints nullable="false"/>
+        <constraints primaryKey="true" primaryKeyName="PK_CACHE_CLIENT_SESSION" nullable="false"/>
       </column>
       <column name="USER_SESSION_ID" type="VARCHAR(36)"/>
       <column name="CLIENT_ID" type="VARCHAR(36)"/>
@@ -154,7 +154,7 @@
       <column name="TIMESTAMP" type="TIMESTAMP"/>
       <column name="EXPIRATION" type="INT"/>
     </createTable>
-    <addForeignKeyConstraint baseColumnNames="USER_SESSION_ID" baseTableName="CACHE_USER_SESSION" constraintName="FK_X1HLA7Q53JNO9YC3SSKR" referencedColumnNames="ID" referencedTableName="CACHE_USER_SESSION" onDelete="CASCADE" />
+    <addForeignKeyConstraint baseColumnNames="USER_SESSION_ID" baseTableName="CACHE_CLIENT_SESSION" constraintName="FK_X1HLA7Q53JNO9YC3SSKR" referencedColumnNames="ID" referencedTableName="CACHE_USER_SESSION" onDelete="CASCADE" />
   </changeSet>
 
   <changeSet author="xgp" id="20240117-304">
@@ -173,7 +173,7 @@
   <changeSet author="xgp" id="20240117-501">
     <createTable tableName="CACHE_LOGIN_FAILURE">
       <column name="ID" type="VARCHAR(36)">
-        <constraints nullable="false"/>
+        <constraints primaryKey="true" primaryKeyName="PK_CACHE_LOGIN_FAILURE" nullable="false"/>
       </column>
       <column name="REALM_ID" type="VARCHAR(36)"/>
       <column name="USER_ID" type="VARCHAR(36)"/>
@@ -187,7 +187,7 @@
   <changeSet author="xgp" id="20240117-601">
     <createTable tableName="CACHE_SINGLE_USE_OBJECT">
       <column name="ID" type="VARCHAR(36)">
-        <constraints nullable="false"/>
+        <constraints primaryKey="true" primaryKeyName="PK_CACHE_SINGLE_USE_OBJECT" nullable="false"/>
       </column>
       <column name="KEY" type="VARCHAR(1024)">
 	<constraints nullable="false" unique="true" uniqueConstraintName="UQ_CACHE_SINGLE_USE_OBJECT_KEY"/>
@@ -198,9 +198,6 @@
   
   <changeSet author="xgp" id="20240117-602">
     <createTable tableName="CACHE_SINGLE_USE_OBJECT_NOTE">
-      <column name="ID" type="VARCHAR(36)">
-        <constraints nullable="false"/>
-      </column>
       <column name="SINGLE_USE_OBJECT_ID" type="VARCHAR(36)">
         <constraints nullable="false"/>
       </column>
@@ -212,20 +209,4 @@
     <addForeignKeyConstraint baseColumnNames="SINGLE_USE_OBJECT_ID" baseTableName="CACHE_SINGLE_USE_OBJECT_NOTE" constraintName="FK_L9YJH3VQREYYRAR2IZFT" referencedColumnNames="ID" referencedTableName="CACHE_SINGLE_USE_OBJECT" onDelete="CASCADE" />
   </changeSet>
 
-  <!--
-
-CREATE TABLE IF NOT EXISTS attributes_to_user_sessions (
-    attribute_name text,
-    attribute_value text,
-    user_session_id text,
-    PRIMARY KEY (attribute_name, attribute_value, user_session_id)
-) WITH CLUSTERING ORDER BY (attribute_value ASC, user_session_id ASC);
-
-CREATE TABLE IF NOT EXISTS user_sessions_to_attributes (
-    user_session_id text,
-    attribute_name text,
-    attribute_values list<text>,
-    PRIMARY KEY (user_session_id, attribute_name)
-) WITH CLUSTERING ORDER BY (attribute_name ASC);
-  -->
 </databaseChangeLog>
