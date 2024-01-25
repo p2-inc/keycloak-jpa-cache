@@ -24,28 +24,10 @@ public class JpaCacheDatastoreProviderFactory extends LegacyDatastoreProviderFac
 
   @Override
   public DatastoreProvider create(KeycloakSession session) {
-    log.infof("Creating JpaCacheDatastoreProvider...");
+    log.tracef("Creating JpaCacheDatastoreProvider...");
     return createProviderCached(
         session, DatastoreProvider.class, () -> new JpaCacheDatastoreProvider(this, session));
   }
-
-  /*
-  @Override
-  public void init(Config.Scope scope) {
-    super.init(scope);
-    log.info("Using JPA cache datastore...");
-  }
-
-  @Override
-  public void postInit(KeycloakSessionFactory keycloakSessionFactory) {
-    super.postInit(keycloakSessionFactory);
-  }
-
-  @Override
-  public void close() {
-    super.close();
-  }
-  */
 
   @Override
   public int order() {

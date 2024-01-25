@@ -5,6 +5,7 @@ import jakarta.persistence.EntityManager;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
@@ -13,6 +14,7 @@ import org.keycloak.models.UserModel;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.RootAuthenticationSessionModel;
 
+@EqualsAndHashCode(of = {"authenticationSession"})
 @RequiredArgsConstructor
 public class JpaCacheAuthSessionAdapter implements AuthenticationSessionModel {
   private final KeycloakSession session;

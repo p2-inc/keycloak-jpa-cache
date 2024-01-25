@@ -19,6 +19,7 @@ import org.keycloak.common.util.Time;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.models.utils.SessionExpiration;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.RootAuthenticationSessionModel;
@@ -104,8 +105,8 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
 
     TypedQuery<AuthenticationSession> query =
         entityManager.createNamedQuery(
-            "findAuthSessionsByRootsessionId", AuthenticationSession.class);
-    query.setParameter("parentSessionId", rootAuthenticationSession.getId());
+            "findAuthSessionsByRootSession", AuthenticationSession.class);
+    query.setParameter("parentSession", rootAuthenticationSession);
     List<AuthenticationSession> authenticationSessions = query.getResultList();
     if (authenticationSessions != null && authenticationSessions.size() >= authSessionsLimit) {
       Optional<AuthenticationSession> oldest =
@@ -125,17 +126,20 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
     long timestamp = Time.currentTimeMillis();
     int authSessionLifespanSeconds = getAuthSessionLifespan(realm);
 
+    String tabId = generateTabId();
     AuthenticationSession authSession =
         AuthenticationSession.builder()
+            .id(KeycloakModelUtils.generateId())
             .parentSession(rootAuthenticationSession)
             .clientId(client.getId())
             .timestamp(timestamp)
             .tabId(generateTabId())
             .build();
-
+    entityManager.persist(authSession);
     rootAuthenticationSession.setTimestamp(timestamp);
     rootAuthenticationSession.setExpiration(
         timestamp + TimeAdapter.fromSecondsToMilliseconds(authSessionLifespanSeconds));
+    rootAuthenticationSession.getAuthenticationSessions().put(tabId, authSession);
 
     JpaCacheAuthSessionAdapter jpaCacheAuthSessionAdapter =
         entityToAdapterFunc(realm).apply(authSession);

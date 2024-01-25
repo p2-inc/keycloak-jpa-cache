@@ -4,10 +4,10 @@ import static org.keycloak.common.util.StackUtil.getShortStackTrace;
 import static org.keycloak.models.utils.KeycloakModelUtils.generateId;
 
 import io.phasetwo.keycloak.jpacache.singleUseObject.persistence.entities.SingleUseObject;
-import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.TypedQuery;
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -42,22 +42,22 @@ public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider 
             .notes(getInternalNotes(notes))
             .build();
 
+    log.tracef("put(%s) %s", key, singleUseEntity);
     entityManager.persist(singleUseEntity);
     entityManager.flush();
   }
 
   private Date getExpiration(long lifespanSeconds) {
-    int ttl = TimeAdapter.fromLongWithTimeInSecondsToIntegerWithTimeInSeconds(lifespanSeconds);
-    Date expiration = new Date();
-    expiration.setTime(expiration.getTime() + ttl);
-    return expiration;
+    return Date.from(Instant.now().plusSeconds(lifespanSeconds));
   }
 
+  // xgp TODO
   @Override
   public Map<String, String> get(String key) {
     log.tracef("get(%s)%s", key, getShortStackTrace());
 
     SingleUseObject singleUseEntity = findByKeyAndExpiration(key, new Date());
+    // should we lazy delete old entities here?
     if (singleUseEntity != null) {
       return getExternalNotes(singleUseEntity.getNotes());
     }

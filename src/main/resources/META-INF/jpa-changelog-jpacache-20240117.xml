@@ -8,7 +8,7 @@
       </column>
       <column name="REALM_ID" type="VARCHAR(36)"/>
       <column name="EXPIRATION" type="BIGINT"/>
-      <column name="TIMESTAMP" type="INT"/>
+      <column name="TIMESTAMP" type="BIGINT"/>
     </createTable>
   </changeSet>
 
@@ -24,7 +24,7 @@
       <column name="PROTOCOL" type="VARCHAR(36)"/>
       <column name="REDIRECT_URI" type="VARCHAR(4096)"/>
       <column name="USER_ID" type="VARCHAR(36)"/>
-      <column name="TIMESTAMP" type="TIMESTAMP"/>
+      <column name="TIMESTAMP" type="BIGINT"/>
     </createTable>
     <addForeignKeyConstraint baseColumnNames="PARENT_SESSION_ID" baseTableName="CACHE_AUTH_SESSION" constraintName="FK_R759UN93RZMCMVVORYMX" referencedColumnNames="ID" referencedTableName="CACHE_ROOT_AUTH_SESSION" onDelete="CASCADE" />
   </changeSet>
