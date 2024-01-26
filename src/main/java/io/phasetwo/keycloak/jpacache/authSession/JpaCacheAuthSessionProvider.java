@@ -111,7 +111,7 @@ public class JpaCacheAuthSessionProvider implements AuthenticationSessionProvide
     Objects.requireNonNull(
         authenticationSession, "The provided root authentication session can't be null!");
     entityManager
-        .createNamedQuery("findRootAuthSession")
+        .createNamedQuery("deleteRootAuthSession")
         .setParameter("realmId", realm.getId())
         .setParameter("id", authenticationSession.getId())
         .executeUpdate();
