@@ -112,16 +112,18 @@
       </column>
       <column name="AUTH_METHOD" type="VARCHAR(36)"/>
       <column name="BROKER_SESSION_ID" type="VARCHAR(36)"/>
-      <column name="EXPIRATION" type="INT"/>
+      <column name="BROKER_USER_ID" type="VARCHAR(36)"/>
+      <column name="EXPIRATION" type="BIGINT"/>
       <column name="IP_ADDRESS" type="VARCHAR(20)"/>
       <column name="LAST_SESSION_REFRESH" type="BIGINT"/>
       <column name="LOGIN_USERNAME" type="VARCHAR(1024)"/>
       <column name="OFFLINE" type="BOOLEAN"/>
       <column name="PERSISTENCE_STATE" type="VARCHAR(10)"/>
       <column name="REALM_ID" type="VARCHAR(36)"/>
+      <column name="USER_ID" type="VARCHAR(36)"/>
       <column name="REMEMBER_ME" type="BOOLEAN"/>
       <column name="STATE" type="VARCHAR(25)"/>
-      <column name="TIMESTAMP" type="INT"/>
+      <column name="TIMESTAMP" type="BIGINT"/>
     </createTable>
   </changeSet>
 

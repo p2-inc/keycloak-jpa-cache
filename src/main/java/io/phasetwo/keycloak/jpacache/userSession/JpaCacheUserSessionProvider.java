@@ -350,18 +350,23 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     getUserSessionsStream(realm, user).forEach(s -> removeUserSession(realm, s));
   }
 
-  // xgp TODO
+  // xgp
   @Override
   public void removeAllExpired() {
-    log.tracef("removeAllExpired()%s", getShortStackTrace());
-    throw new UnsupportedOperationException("TODO!");
+    entityManager
+        .createNamedQuery("removeExpiredUserSessions")
+        .setParameter("now", Time.currentTimeMillis())
+        .executeUpdate();
   }
 
-  // xgp TODO
+  // xgp
   @Override
   public void removeExpired(RealmModel realm) {
-    log.tracef("removeExpired(%s)%s", realm, getShortStackTrace());
-    throw new UnsupportedOperationException("TODO!");
+    entityManager
+        .createNamedQuery("removeExpiredUserSessionsByRealm")
+        .setParameter("realmId", realm.getId())
+        .setParameter("now", Time.currentTimeMillis())
+        .executeUpdate();
   }
 
   // xgp
@@ -432,7 +437,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         .orElse(null);
   }
 
-  // xgp TODO
+  // xgp
   @Override
   public void removeOfflineUserSession(RealmModel realm, UserSessionModel userSession) {
     Objects.requireNonNull(userSession, "The provided user session can't be null!");
@@ -445,12 +450,14 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
       removeUserSession(realm, userSession);
     } else if (userSessionEntity.hasCorrespondingSession()) {
       String correspondingSessionId = userSessionEntity.getNotes().get(CORRESPONDING_SESSION_ID);
-      // TODO
-      // userSessionRepository.deleteCorrespondingUserSession(userSessionEntity);
+      UserSession correspondingSession =
+          entityManager.find(UserSession.class, correspondingSessionId);
+      entityManager.remove(correspondingSession);
+      entityManager.flush();
     }
   }
 
-  // xgp TODO
+  // xgp
   @Override
   public AuthenticatedClientSessionModel createOfflineClientSession(
       AuthenticatedClientSessionModel clientSession, UserSessionModel offlineUserSession) {
@@ -475,17 +482,14 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         getOfflineUserSessionEntityStream(realm, offlineUserSession.getId()).findFirst();
     if (userSessionEntity.isPresent()) {
       UserSession userSession = userSessionEntity.get();
-      String clientId = clientSession.getClient().getId();
-
-      // TODO
-      // userSessionRepository.addClientSession(userSession, clientSessionEntity);
+      String clientId = clientSession.getClient().getClientId();
+      userSession.getClientSessions().put(clientId, clientSessionEntity);
 
       UserSessionModel userSessionModel = entityToAdapterFunc(realm).apply(userSession);
       return userSessionModel == null
           ? null
           : userSessionModel.getAuthenticatedClientSessionByClient(clientId);
     }
-
     return null;
   }
 
@@ -524,35 +528,41 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     return getUserSessionByBrokerUserIdStream(realm, brokerUserId).filter(s -> s.isOffline());
   }
 
-  // xgp TODO
+  // xgp
   @Override
   public long getOfflineSessionsCount(RealmModel realm, ClientModel client) {
     log.tracef("getOfflineSessionsCount(%s, %s)%s", realm, client, getShortStackTrace());
-
-    /* need a better jpa query to get clientsessions client id
-    TypedQuery<Long> query = entityManager.createNamedQuery("countOfflineUserSessions", Long.class);
+    TypedQuery<Long> query =
+        entityManager.createNamedQuery("countOfflineClientSessions", Long.class);
     query.setParameter("realmId", realm.getId());
-    query.setParameter("offline", true);
-    return query.getResultsStream()
-    return userSessionRepository.findAll().stream().filter(s -> s.getRealmId().equals(realm.getId())).filter(s -> s.getOffline() != null && s.getOffline()).flatMap(s -> s.getClientSessions().values().stream()).filter(s -> s.getClientId().equals(client.getId())).count();
-    */
-    return 0;
+    query.setParameter("clientId", client.getId());
+    return query.getSingleResult();
   }
 
-  // xgp TODO
+  // xgp TODO this might actually contain dupes - need a better query
   @Override
   public Stream<UserSessionModel> getOfflineUserSessionsStream(
       RealmModel realm, ClientModel client, Integer firstResult, Integer maxResults) {
     log.tracef(
         "getOfflineUserSessionsStream(%s, %s, %s, %s)%s",
         realm, client, firstResult, maxResults, getShortStackTrace());
-    /*
-    return userSessionRepository.findAll().stream().filter(s -> s.getRealmId().equals(realm.getId())).filter(s -> s.getOffline() != null && s.getOffline()).filter(s -> s.getClientSessions().containsKey(client.getId())).skip(firstResult == null || firstResult < 0 ? 0 : firstResult).limit(maxResults == null || maxResults < 0 ? Long.MAX_VALUE : maxResults).sorted(Comparator.comparing(UserSession::getLastSessionRefresh)).map(entityToAdapterFunc(realm));
-    */
-    return null;
+    TypedQuery<AuthenticatedClientSessionValue> query =
+        entityManager
+            .createNamedQuery(
+                "findOfflineClientSessionsByClientId", AuthenticatedClientSessionValue.class)
+            .setParameter("realmId", realm.getId())
+            .setParameter("clientId", client.getId())
+            .setFirstResult(firstResult)
+            .setMaxResults(maxResults);
+    return query
+        .getResultStream()
+        .map(AuthenticatedClientSessionValue::getParentSession)
+        .map(entityToAdapterFunc(realm));
+    // dont need this anymore as the jpa query has ORDER BY
+    //        .sorted(Comparator.comparing(UserSession::getLastSessionRefresh))
   }
 
-  // xgp TODO
+  // xgp
   @Override
   public void importUserSessions(
       Collection<UserSessionModel> persistentUserSessions, boolean offline) {
@@ -560,27 +570,38 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
       return;
     }
 
-    /*
-    persistentUserSessions.stream().map(pus -> {
-        UserSession userSessionEntity = createUserSessionEntityInstance(null, pus.getRealm().getId(), pus.getUser().getId(), pus.getLoginUsername(), pus.getIpAddress(), pus.getAuthMethod(), pus.isRememberMe(), pus.getBrokerSessionId(), pus.getBrokerUserId(), offline);
-        userSessionEntity.setPersistenceState(UserSessionModel.SessionPersistenceState.PERSISTENT);
+    persistentUserSessions.forEach(
+        pus -> {
+          UserSession userSessionEntity =
+              createUserSessionEntityInstance(
+                  null,
+                  pus.getRealm().getId(),
+                  pus.getUser().getId(),
+                  pus.getLoginUsername(),
+                  pus.getIpAddress(),
+                  pus.getAuthMethod(),
+                  pus.isRememberMe(),
+                  pus.getBrokerSessionId(),
+                  pus.getBrokerUserId(),
+                  offline);
+          userSessionEntity.setPersistenceState(
+              UserSessionModel.SessionPersistenceState.PERSISTENT);
 
-        for (Map.Entry<String, AuthenticatedClientSessionModel> entry : pus.getAuthenticatedClientSessions().entrySet()) {
-          AuthenticatedClientSessionValue clientSession = createAuthenticatedClientSessionInstance(entry.getValue(), offline);
+          for (Map.Entry<String, AuthenticatedClientSessionModel> entry :
+              pus.getAuthenticatedClientSessions().entrySet()) {
+            AuthenticatedClientSessionValue clientSession =
+                createAuthenticatedClientSessionInstance(entry.getValue(), offline);
 
-          // Update timestamp to same value as userSession. LastSessionRefresh of userSession from DB will have correct value
-          clientSession.setTimestamp(userSessionEntity.getLastSessionRefresh());
+            // Update timestamp to same value as userSession. LastSessionRefresh of userSession from
+            // DB will have correct value
+            clientSession.setTimestamp(userSessionEntity.getLastSessionRefresh());
 
-          userSessionRepository.insert(userSessionEntity);
-          userSessionRepository.addClientSession(userSessionEntity, clientSession);
-
-          JpaCacheUserSessionAdapter adapter = entityToAdapterFunc(pus.getRealm()).apply(userSessionEntity);
-          sessionModels.put(adapter.getId(), adapter);
-        }
-
-        return userSessionEntity;
-      }).forEach(userSessionRepository::insert);
-    */
+            userSessionEntity.getClientSessions().put(clientSession.getClientId(), clientSession);
+            entityManager.persist(userSessionEntity);
+            entityManager.persist(clientSession);
+          }
+        });
+    entityManager.flush();
   }
 
   @Override

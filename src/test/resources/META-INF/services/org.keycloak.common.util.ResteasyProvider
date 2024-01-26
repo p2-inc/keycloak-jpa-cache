@@ -1,1 +1,1 @@
-io.phasetwo.keycloak.testsuite.ResteasyNullProvider
+io.phasetwo.keycloak.common.ResteasyNullProvider

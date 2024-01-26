@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.phasetwo.keycloak.jpacache.testsuite;
+package io.phasetwo.keycloak.common;
 
 import org.keycloak.common.util.ResteasyProvider;
 

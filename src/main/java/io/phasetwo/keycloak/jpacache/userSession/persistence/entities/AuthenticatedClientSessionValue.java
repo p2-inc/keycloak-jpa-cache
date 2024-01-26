@@ -16,7 +16,15 @@ import lombok.*;
   @NamedQuery(
       name = "findClientSessionsByClientId",
       query =
-          "SELECT s FROM AuthenticatedClientSessionValue s WHERE s.parentSession.realmId = :realmId AND s.clientId = :clientId")
+          "SELECT s FROM AuthenticatedClientSessionValue s WHERE s.parentSession.realmId = :realmId AND s.clientId = :clientId"),
+  @NamedQuery(
+      name = "findOfflineClientSessionsByClientId",
+      query =
+          "SELECT s FROM AuthenticatedClientSessionValue s WHERE s.parentSession.realmId = :realmId AND s.clientId = :clientId AND s.offline IS NOT NULL and s.offline = TRUE ORDER BY parentSession.lastSessionRefresh"),
+  @NamedQuery(
+      name = "countOfflineClientSessions",
+      query =
+          "SELECT COUNT(s) FROM AuthenticatedClientSessionValue s WHERE s.parentSession.realmId = :realmId AND s.clientId = :clientId AND s.offline IS NOT NULL and s.offline = TRUE")
 })
 @Entity
 public class AuthenticatedClientSessionValue implements ExpirableEntity {

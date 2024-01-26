@@ -57,7 +57,7 @@ public class JpaCacheSingleUseObjectProvider implements SingleUseObjectProvider 
     log.tracef("get(%s)%s", key, getShortStackTrace());
 
     SingleUseObject singleUseEntity = findByKeyAndExpiration(key, new Date());
-    // should we lazy delete old entities here?
+    // should we lazy delete old/expired entities here?
     if (singleUseEntity != null) {
       return getExternalNotes(singleUseEntity.getNotes());
     }

@@ -32,7 +32,14 @@ import org.keycloak.models.UserSessionModel;
       query = "SELECT s FROM UserSession s WHERE s.realmId = :realmId"),
   @NamedQuery(
       name = "removeAllUserSessions",
-      query = "SELECT s FROM UserSession s WHERE s.realmId = :realmId"),
+      query = "DELETE FROM UserSession s WHERE s.realmId = :realmId"),
+  @NamedQuery(
+      name = "removeExpiredUserSessions",
+      query = "DELETE FROM UserSession s WHERE s.expiration IS NOT NULL AND s.expiration < :now"),
+  @NamedQuery(
+      name = "removeExpiredUserSessionsByRealm",
+      query =
+          "DELETE FROM UserSession s WHERE s.realmId = :realmId AND s.expiration IS NOT NULL AND s.expiration < :now"),
   @NamedQuery(
       name = "countOfflineUserSessions",
       query =
@@ -99,6 +106,8 @@ public class UserSession implements ExpirableEntity {
   @MapKeyColumn(name = "CLIENT_ID")
   private Map<String, AuthenticatedClientSessionValue> clientSessions = new HashMap<>();
 
+  @Column(name = "PERSISTENCE_STATE")
+  @Enumerated(EnumType.STRING)
   private UserSessionModel.SessionPersistenceState persistenceState;
 
   public boolean hasCorrespondingSession() {
