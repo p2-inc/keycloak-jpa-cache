@@ -80,6 +80,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
 
     AuthenticatedClientSessionValue entity =
         createAuthenticatedClientSessionEntityInstance(null, client.getId(), false);
+    entity.setParentSession(userSessionEntity);
     String started =
         entity.getTimestamp() != null
             ? String.valueOf(TimeAdapter.fromMilliSecondsToSeconds(entity.getTimestamp()))
@@ -90,7 +91,8 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     userSessionEntity.getClientSessions().put(client.getId(), entity);
     entityManager.persist(entity);
     entityManager.flush();
-
+    // log.tracef("persisted client session %s", entity);
+    
     return userSession.getAuthenticatedClientSessionByClient(client.getId());
   }
 
@@ -260,9 +262,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         .setFirstResult(firstResult)
         .setMaxResults(maxResults);
 
-    Stream<AuthenticatedClientSessionValue> rs = query.getResultStream();
-    log.tracef("found %d results for %s", rs.count(), client);
-    return rs
+    return query.getResultStream()
         .map(AuthenticatedClientSessionValue::getParentSession)
         .map(entityToAdapterFunc((realm)));
   }
