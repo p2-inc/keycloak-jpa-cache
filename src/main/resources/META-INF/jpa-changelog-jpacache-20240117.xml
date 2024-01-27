@@ -153,8 +153,8 @@
       <column name="CURRENT_REFRESH_TOKEN" type="VARCHAR(4096)"/>
       <column name="CURRENT_REFRESH_TOKEN_USE_COUNT" type="INT"/>
       <column name="OFFLINE" type="BOOLEAN"/>
-      <column name="TIMESTAMP" type="TIMESTAMP"/>
-      <column name="EXPIRATION" type="INT"/>
+      <column name="TIMESTAMP" type="BIGINT"/>
+      <column name="EXPIRATION" type="BIGINT"/>
     </createTable>
     <addForeignKeyConstraint baseColumnNames="USER_SESSION_ID" baseTableName="CACHE_CLIENT_SESSION" constraintName="FK_X1HLA7Q53JNO9YC3SSKR" referencedColumnNames="ID" referencedTableName="CACHE_USER_SESSION" onDelete="CASCADE" />
   </changeSet>

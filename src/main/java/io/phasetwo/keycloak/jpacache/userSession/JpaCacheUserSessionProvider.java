@@ -32,6 +32,8 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
   private final KeycloakSession session;
   private final EntityManager entityManager;
 
+  private final Map<String, UserSession> transientUserSessions = new HashMap<>();
+
   // xgp
   private Function<UserSession, JpaCacheUserSessionAdapter> entityToAdapterFunc(RealmModel realm) {
     return (origEntity) -> {
@@ -40,8 +42,12 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
       }
 
       if (isExpired(origEntity, false)) {
-        entityManager.remove(origEntity);
-        entityManager.flush();
+        if (TRANSIENT == origEntity.getPersistenceState()) {
+          transientUserSessions.remove(origEntity.getId());
+        } else {
+          entityManager.remove(origEntity);
+          entityManager.flush();
+        }
         return null;
       } else {
         return new JpaCacheUserSessionAdapter(session, realm, origEntity, entityManager);
@@ -81,8 +87,9 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     entity.getNotes().put(AuthenticatedClientSessionModel.STARTED_AT_NOTE, started);
     setClientSessionExpiration(
         entity, SessionExpirationData.builder().realm(realm).build(), client);
-
     userSessionEntity.getClientSessions().put(client.getId(), entity);
+    entityManager.persist(entity);
+    entityManager.flush();
 
     return userSession.getAuthenticatedClientSessionByClient(client.getId());
   }
@@ -163,10 +170,12 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
 
     entity.setPersistenceState(persistenceState);
     setUserSessionExpiration(entity, SessionExpirationData.builder().realm(realm).build());
+    /* need to understand more about persistenceState */
     if (TRANSIENT == persistenceState) {
       if (id == null) {
         entity.setId(KeycloakModelUtils.generateId().toString());
       }
+      transientUserSessions.put(entity.getId(), entity);
     } else {
       if (id != null && entityManager.find(UserSession.class, id) != null) {
         throw new ModelDuplicateException("User session exists: " + id);
@@ -174,7 +183,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
       entityManager.persist(entity);
       entityManager.flush();
     }
-
+    
     JpaCacheUserSessionAdapter userSession = entityToAdapterFunc(realm).apply(entity);
 
     if (userSession != null) {
@@ -198,8 +207,9 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
 
     if (id == null) return null;
 
-    UserSession session = entityManager.find(UserSession.class, id);
-    if (session.isOffline() == offline) {
+    UserSession session = transientUserSessions.get(id);
+    if (session == null) session = entityManager.find(UserSession.class, id);
+    if (session != null && session.isOffline() == offline) {
       return entityToAdapterFunc(realm).apply(session);
     } else {
       return null;
@@ -244,15 +254,17 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
 
     TypedQuery<AuthenticatedClientSessionValue> query =
         entityManager.createNamedQuery(
-            "findClientSessionsByClientId", AuthenticatedClientSessionValue.class);
-    query.setParameter("realmId", realm.getId());
-    query.setParameter("clientId", client.getId());
-    return closing(
-        paginateQuery(query, firstResult, maxResults)
-            .getResultStream()
-            .map(AuthenticatedClientSessionValue::getParentSession)
-            .map(entityToAdapterFunc((realm))));
-    //        .filter(Objects::nonNull);
+            "findClientSessionsByClientId", AuthenticatedClientSessionValue.class)
+        .setParameter("realmId", realm.getId())
+        .setParameter("clientId", client.getId())
+        .setFirstResult(firstResult)
+        .setMaxResults(maxResults);
+
+    Stream<AuthenticatedClientSessionValue> rs = query.getResultStream();
+    log.tracef("found %d results for %s", rs.count(), client);
+    return rs
+        .map(AuthenticatedClientSessionValue::getParentSession)
+        .map(entityToAdapterFunc((realm)));
   }
 
   // xgp
