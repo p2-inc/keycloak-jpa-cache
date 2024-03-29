@@ -1,30 +1,40 @@
 package io.phasetwo.keycloak.jpacache.userSession;
 
-import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setClientSessionExpiration;
-import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setUserSessionExpiration;
-import static io.phasetwo.keycloak.mapstorage.common.ExpirationUtils.isExpired;
-import static org.keycloak.common.util.StackUtil.getShortStackTrace;
-import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
-import static org.keycloak.models.UserSessionModel.SessionPersistenceState.TRANSIENT;
-import static org.keycloak.models.jpa.PaginationUtils.paginateQuery;
-import static org.keycloak.utils.StreamsUtil.closing;
-
 import io.phasetwo.keycloak.jpacache.userSession.expiration.SessionExpirationData;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.AuthenticatedClientSessionValue;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.UserSession;
 import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
-import java.util.*;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.jbosslog.JBossLog;
 import org.keycloak.common.util.Time;
 import org.keycloak.device.DeviceActivityManager;
-import org.keycloak.models.*;
+import org.keycloak.models.AuthenticatedClientSessionModel;
+import org.keycloak.models.ClientModel;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.ModelDuplicateException;
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.UserModel;
+import org.keycloak.models.UserSessionModel;
+import org.keycloak.models.UserSessionProvider;
 import org.keycloak.models.utils.KeycloakModelUtils;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+
+import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setClientSessionExpiration;
+import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setUserSessionExpiration;
+import static io.phasetwo.keycloak.mapstorage.common.ExpirationUtils.isExpired;
+import static org.keycloak.common.util.StackUtil.getShortStackTrace;
+import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
+import static org.keycloak.models.UserSessionModel.SessionPersistenceState.TRANSIENT;
 
 @JBossLog
 @RequiredArgsConstructor
@@ -261,7 +271,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         .setMaxResults(maxResults);
 
     Stream<AuthenticatedClientSessionValue> rs = query.getResultStream();
-    log.tracef("found %d results for %s", rs.count(), client);
+   // log.tracef("found %d results for %s", rs.count(), client);
     return rs
         .map(AuthenticatedClientSessionValue::getParentSession)
         .map(entityToAdapterFunc((realm)));
@@ -347,7 +357,8 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
 
     log.tracef("removeUserSession(%s, %s)%s", realm, session, getShortStackTrace());
 
-    UserSession entity = ((JpaCacheUserSessionAdapter) session).getUserSessionEntity();
+    //unlike merge or find, getReference doesn't issue a SELECT sql statement
+    UserSession entity = entityManager.getReference(UserSession.class, session.getId());
     if (entity != null) {
       entityManager.remove(entity);
       entityManager.flush();

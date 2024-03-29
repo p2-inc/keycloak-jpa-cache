@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import lombok.EqualsAndHashCode;
 import org.keycloak.common.util.Time;
 import org.keycloak.models.*;
+import org.keycloak.models.jpa.entities.ClientEntity;
 
 @EqualsAndHashCode(of = "userSessionEntity")
 public class JpaCacheUserSessionAdapter implements UserSessionModel {
@@ -288,7 +289,12 @@ public class JpaCacheUserSessionAdapter implements UserSessionModel {
 
   private boolean filterAndRemoveClientSessionWithoutClient(
       AuthenticatedClientSessionValue clientSession) {
-    ClientModel client = realm.getClientById(clientSession.getClientId());
+
+    //ClientModel client = realm.getClientById(clientSession.getClientId());
+    //entityManager.joinTransaction();
+
+    // entity manager closed?
+    var client = entityManager.find(ClientEntity.class, clientSession.getClientId());
 
     if (client == null) {
       userSessionEntity.getClientSessions().remove(clientSession.getClientId());
