@@ -241,6 +241,7 @@ public class UserSessionExpirationTest extends KeycloakModelTest {
         (session, realm) -> {
           realm.setSsoSessionIdleTimeout(1800);
           realm.setSsoSessionMaxLifespan(36000);
+          //if tuning these values different stages of the test will pass
           realm.setClientSessionIdleTimeout(10);
           return null;
         });

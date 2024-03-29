@@ -131,4 +131,9 @@ public class UserSession implements ExpirableEntity {
   public boolean isOffline() {
     return offline != null ? offline.booleanValue() : false;
   }
+
+  @PostPersist
+  void postPersist(){
+    System.out.println("UserSession: " + this.id);
+  }
 }

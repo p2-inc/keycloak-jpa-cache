@@ -87,4 +87,9 @@ public class AuthenticatedClientSessionValue implements ExpirableEntity {
   public boolean isOffline() {
     return offline != null ? offline.booleanValue() : false;
   }
+
+  @PostPersist
+  void postPersist(){
+    System.out.println("AuthenticatedClientSessionValue: " + this.id);
+  }
 }

@@ -111,7 +111,6 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(JpaEventStoreProviderFactory.class)
           .add(JpaGroupProviderFactory.class)
           .add(JpaRealmProviderFactory.class)
-          .add(JpaRealmProviderFactory.class)
           .add(JpaRoleProviderFactory.class)
           .add(JpaUpdaterProviderFactory.class)
           .add(JpaUserProviderFactory.class)
