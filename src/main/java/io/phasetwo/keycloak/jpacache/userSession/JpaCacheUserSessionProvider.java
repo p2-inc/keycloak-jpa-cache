@@ -88,10 +88,10 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     entity.getNotes().put(AuthenticatedClientSessionModel.STARTED_AT_NOTE, started);
     setClientSessionExpiration(
         entity, SessionExpirationData.builder().realm(realm).build(), client);
+    log.tracef("persisted client session %s%s", entity, getShortStackTrace());
     userSessionEntity.getClientSessions().put(client.getId(), entity);
     entityManager.persist(entity);
     entityManager.flush();
-    // log.tracef("persisted client session %s", entity);
     
     return userSession.getAuthenticatedClientSessionByClient(client.getId());
   }
@@ -172,11 +172,11 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
 
     entity.setPersistenceState(persistenceState);
     setUserSessionExpiration(entity, SessionExpirationData.builder().realm(realm).build());
+    if (id == null) {
+      entity.setId(KeycloakModelUtils.generateId().toString());
+    }
     /* need to understand more about persistenceState */
     if (TRANSIENT == persistenceState) {
-      if (id == null) {
-        entity.setId(KeycloakModelUtils.generateId().toString());
-      }
       transientUserSessions.put(entity.getId(), entity);
     } else {
       if (id != null && entityManager.find(UserSession.class, id) != null) {
@@ -184,6 +184,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
       }
       entityManager.persist(entity);
       entityManager.flush();
+      log.tracef("persisted user session %s", entity);
     }
     
     JpaCacheUserSessionAdapter userSession = entityToAdapterFunc(realm).apply(entity);
@@ -240,6 +241,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
             "findClientSessionsByClientId", AuthenticatedClientSessionValue.class);
     query.setParameter("realmId", realm.getId());
     query.setParameter("clientId", client.getId());
+    
     return query
         .getResultStream()
         .map(AuthenticatedClientSessionValue::getParentSession)
@@ -384,11 +386,23 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
   // xgp
   @Override
   public void removeUserSessions(RealmModel realm) {
+    /*
     entityManager
         .createNamedQuery("removeAllUserSessions")
         .setParameter("realmId", realm.getId())
         .executeUpdate();
+    */
+    TypedQuery<UserSession> query =
+        entityManager.createNamedQuery("findAllUserSessions", UserSession.class);
+    query.setParameter("realmId", realm.getId());
+    query.getResultStream().forEach(entity -> {
+        log.infof("removing session %s", entity.getId());
+        entityManager.remove(entity);
+        //entityManager.detach(entity);
+        entityManager.flush();
+      });
   }
+
 
   // xgp
   @Override

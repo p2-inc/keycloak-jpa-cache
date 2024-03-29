@@ -102,7 +102,7 @@ public class UserSession implements ExpirableEntity {
   private Map<String, String> notes = new HashMap<>();
 
   @Builder.Default
-  @OneToMany(mappedBy = "parentSession")
+  @OneToMany(cascade = CascadeType.ALL, mappedBy = "parentSession")
   @MapKeyColumn(name = "CLIENT_ID")
   private Map<String, AuthenticatedClientSessionValue> clientSessions = new HashMap<>();
 

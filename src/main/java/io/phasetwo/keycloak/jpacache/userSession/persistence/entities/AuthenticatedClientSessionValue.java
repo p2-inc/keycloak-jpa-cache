@@ -37,7 +37,7 @@ public class AuthenticatedClientSessionValue implements ExpirableEntity {
   @Access(AccessType.PROPERTY)
   protected String id;
 
-  @OneToOne(fetch = FetchType.LAZY)
+  @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
   @JoinColumn(name = "USER_SESSION_ID")
   private UserSession parentSession;
 
