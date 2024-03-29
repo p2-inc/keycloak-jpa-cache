@@ -98,11 +98,14 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     entity.getNotes().put(AuthenticatedClientSessionModel.STARTED_AT_NOTE, started);
     setClientSessionExpiration(
         entity, SessionExpirationData.builder().realm(realm).build(), client);
-    log.tracef("persisted client session %s%s", entity, getShortStackTrace());
     userSessionEntity.getClientSessions().put(client.getId(), entity);
-    entityManager.persist(entity);
-    entityManager.flush();
-    
+    if (userSessionEntity.getPersistenceState() != null && userSessionEntity.getPersistenceState() == TRANSIENT) {
+      log.tracef("don't persist client session %s, as parent user session is %s", entity, userSessionEntity.getPersistenceState());                
+    } else {
+      log.tracef("persisted client session %s%s", entity, getShortStackTrace());
+      entityManager.persist(entity);
+      entityManager.flush();
+    }
     return userSession.getAuthenticatedClientSessionByClient(client.getId());
   }
 
