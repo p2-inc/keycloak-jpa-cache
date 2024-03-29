@@ -301,7 +301,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         "getUserSessionByBrokerSessionId(%s, %s)%s", realm, brokerSessionId, getShortStackTrace());
 
     TypedQuery<UserSession> query =
-        entityManager.createNamedQuery("findUserSessionsByBrokerUserId", UserSession.class);
+        entityManager.createNamedQuery("findUserSessionsByBrokerSessionId", UserSession.class);
     query.setParameter("realmId", realm.getId());
     query.setParameter("brokerSessionId", brokerSessionId);
     UserSession session = query.getSingleResult();
