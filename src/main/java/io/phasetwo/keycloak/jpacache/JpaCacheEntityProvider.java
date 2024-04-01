@@ -17,7 +17,8 @@ public class JpaCacheEntityProvider implements JpaEntityProvider {
     LoginFailure.class,
     SingleUseObject.class,
     AuthenticatedClientSessionValue.class,
-    UserSession.class
+    UserSession.class,
+    UserSessionToAttributeMapping.class
   };
 
   @Override

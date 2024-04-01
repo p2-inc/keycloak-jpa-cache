@@ -140,6 +140,24 @@
     <addForeignKeyConstraint baseColumnNames="USER_SESSION_ID" baseTableName="CACHE_USER_SESSION_NOTE" constraintName="FK_JV696TMAM4AWPHXZVHPD" referencedColumnNames="ID" referencedTableName="CACHE_USER_SESSION" onDelete="CASCADE" />
   </changeSet>
 
+  <changeSet author="rtufisi" id="20240331">
+    <createTable tableName="CACHE_USER_SESSION_ATTRIBUTES">
+      <column name="ID" type="VARCHAR(36)">
+        <constraints primaryKey="true" primaryKeyName="PK_CACHE_USER_SESSION_ATTRIBUTES" nullable="false"/>
+      </column>
+      <column name="NAME" type="VARCHAR(255)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="VALUE" type="VARCHAR(255)"/>
+      <column name="USER_SESSION_ID" type="VARCHAR(36)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <addForeignKeyConstraint baseColumnNames="USER_SESSION_ID" baseTableName="CACHE_USER_SESSION_ATTRIBUTES"
+                             constraintName="FK3C47C64BEACCA9688" referencedColumnNames="ID"
+                             referencedTableName="CACHE_USER_SESSION"/>
+  </changeSet>
+
   <changeSet author="xgp" id="20240117-303">
     <createTable tableName="CACHE_CLIENT_SESSION">
       <column name="ID" type="VARCHAR(36)">
