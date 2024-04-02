@@ -22,6 +22,10 @@ import lombok.*;
       query =
           "SELECT s FROM AuthenticatedClientSessionValue s WHERE s.parentSession.realmId = :realmId AND s.clientId = :clientId AND s.offline IS NOT NULL and s.offline = TRUE ORDER BY parentSession.lastSessionRefresh"),
   @NamedQuery(
+      name = "countAllClientSessions",
+      query =
+          "SELECT COUNT(s) FROM AuthenticatedClientSessionValue s WHERE s.parentSession.realmId = :realmId"),
+  @NamedQuery(
       name = "countClientSessions",
       query =
           "SELECT COUNT(s) FROM AuthenticatedClientSessionValue s WHERE s.parentSession.realmId = :realmId AND s.clientId = :clientId"),

@@ -47,7 +47,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
 
   private final Map<String, UserSession> transientUserSessions = new HashMap<>();
 
-  // xgp
   private Function<UserSession, JpaCacheUserSessionAdapter> entityToAdapterFunc(RealmModel realm) {
     return (origEntity) -> {
       if (origEntity == null) {
@@ -73,7 +72,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     return session;
   }
 
-  // xgp
   @Override
   public AuthenticatedClientSessionModel createClientSession(
       RealmModel realm, ClientModel client, UserSessionModel userSession) {
@@ -108,14 +106,13 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
           "don't persist client session %s, as parent user session is %s",
           entity, userSessionEntity.getPersistenceState());
     } else {
-      log.tracef("persisted client session %s%s", entity, getShortStackTrace());
+      log.tracef("persisted client session %s", entity);
       entityManager.persist(entity);
       entityManager.flush();
     }
     return userSession.getAuthenticatedClientSessionByClient(client.getId());
   }
 
-  // xgp
   @Override
   public AuthenticatedClientSessionModel getClientSession(
       UserSessionModel userSession, ClientModel client, String clientSessionId, boolean offline) {
@@ -135,7 +132,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         : currentSession.getAuthenticatedClientSessionByClient(client.getId());
   }
 
-  // xgp
   @Override
   public UserSessionModel createUserSession(
       RealmModel realm,
@@ -159,7 +155,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         UserSessionModel.SessionPersistenceState.PERSISTENT);
   }
 
-  // xgp
   @Override
   public UserSessionModel createUserSession(
       String id,
@@ -215,13 +210,11 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     return userSession;
   }
 
-  // xgp
   @Override
   public JpaCacheUserSessionAdapter getUserSession(RealmModel realm, String id) {
     return getUserSession(realm, id, false);
   }
 
-  // xgp
   private JpaCacheUserSessionAdapter getUserSession(RealmModel realm, String id, boolean offline) {
     Objects.requireNonNull(realm, "The provided realm can't be null!");
 
@@ -238,7 +231,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     }
   }
 
-  // xgp
   @Override
   public Stream<UserSessionModel> getUserSessionsStream(RealmModel realm, UserModel user) {
     log.tracef("getUserSessionsStream(%s, %s)%s", realm, user, getShortStackTrace());
@@ -250,7 +242,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     return query.getResultStream().map(entityToAdapterFunc((realm)));
   }
 
-  // xgp
   @Override
   public Stream<UserSessionModel> getUserSessionsStream(RealmModel realm, ClientModel client) {
     log.tracef("getUserSessionsStream(%s, %s)%s", realm, client, getShortStackTrace());
@@ -267,7 +258,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         .map(entityToAdapterFunc((realm)));
   }
 
-  // xgp
   @Override
   public Stream<UserSessionModel> getUserSessionsStream(
       RealmModel realm, ClientModel client, Integer firstResult, Integer maxResults) {
@@ -289,7 +279,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         .map(entityToAdapterFunc((realm)));
   }
 
-  // xgp
   @Override
   public Stream<UserSessionModel> getUserSessionByBrokerUserIdStream(
       RealmModel realm, String brokerUserId) {
@@ -303,7 +292,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     return query.getResultStream().map(entityToAdapterFunc((realm)));
   }
 
-  // xgp
   @Override
   public UserSessionModel getUserSessionByBrokerSessionId(
       RealmModel realm, String brokerSessionId) {
@@ -357,7 +345,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     return getUserSessionsStream(realm, client).count();
   }
 
-  // xgp
   @Override
   public Map<String, Long> getActiveClientSessionStats(RealmModel realm, boolean offline) {
     log.tracef("getActiveClientSessionStats(%s, %s)%s", realm, offline, getShortStackTrace());
@@ -369,7 +356,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         .collect(Collectors.toMap(row -> row[0].toString(), row -> (Long) row[1]));
   }
 
-  // xgp
   @Override
   public void removeUserSession(RealmModel realm, UserSessionModel session) {
     Objects.requireNonNull(session, "The provided user session can't be null!");
@@ -384,7 +370,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     }
   }
 
-  // xgp
   @Override
   public void removeUserSessions(RealmModel realm, UserModel user) {
     log.tracef("removeUserSessions(%s, %s)%s", realm, user, getShortStackTrace());
@@ -392,7 +377,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     getUserSessionsStream(realm, user).forEach(s -> removeUserSession(realm, s));
   }
 
-  // xgp
   @Override
   public void removeAllExpired() {
     entityManager
@@ -401,7 +385,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         .executeUpdate();
   }
 
-  // xgp
   @Override
   public void removeExpired(RealmModel realm) {
     entityManager
@@ -411,7 +394,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         .executeUpdate();
   }
 
-  // xgp
   @Override
   public void removeUserSessions(RealmModel realm) {
     /*
@@ -434,14 +416,12 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
             });
   }
 
-  // xgp
   @Override
   public void onRealmRemoved(RealmModel realm) {
     log.tracef("onRealmRemoved(%s)%s", realm, getShortStackTrace());
     removeUserSessions(realm);
   }
 
-  // xgp
   @Override
   public void onClientRemoved(RealmModel realm, ClientModel client) {
     log.tracef("onClientRemoved(%s, %s)%s", realm, client, getShortStackTrace());
@@ -495,7 +475,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         .orElse(null);
   }
 
-  // xgp
   @Override
   public void removeOfflineUserSession(RealmModel realm, UserSessionModel userSession) {
     Objects.requireNonNull(userSession, "The provided user session can't be null!");
@@ -515,7 +494,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     }
   }
 
-  // xgp
   @Override
   public AuthenticatedClientSessionModel createOfflineClientSession(
       AuthenticatedClientSessionModel clientSession, UserSessionModel offlineUserSession) {
@@ -554,7 +532,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     return null;
   }
 
-  // xgp
   @Override
   public Stream<UserSessionModel> getOfflineUserSessionsStream(RealmModel realm, UserModel user) {
     log.tracef("getOfflineUserSessionsStream(%s, %s)%s", realm, user, getShortStackTrace());
@@ -562,7 +539,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     return getUserSessionsStream(realm, user).filter(s -> s.isOffline());
   }
 
-  // xgp
   @Override
   public UserSessionModel getOfflineUserSessionByBrokerSessionId(
       RealmModel realm, String brokerSessionId) {
@@ -578,7 +554,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         .orElse(null);
   }
 
-  // xgp
   @Override
   public Stream<UserSessionModel> getOfflineUserSessionByBrokerUserIdStream(
       RealmModel realm, String brokerUserId) {
@@ -589,7 +564,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     return getUserSessionByBrokerUserIdStream(realm, brokerUserId).filter(s -> s.isOffline());
   }
 
-  // xgp
   @Override
   public long getOfflineSessionsCount(RealmModel realm, ClientModel client) {
     log.tracef("getOfflineSessionsCount(%s, %s)%s", realm, client, getShortStackTrace());
@@ -623,7 +597,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     //        .sorted(Comparator.comparing(UserSession::getLastSessionRefresh))
   }
 
-  // xgp
   @Override
   public void importUserSessions(
       Collection<UserSessionModel> persistentUserSessions, boolean offline) {
@@ -705,7 +678,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     return Stream.empty();
   }
 
-  // xgp
   private UserSession createUserSessionEntityInstance(
       UserSessionModel userSession, boolean offline) {
     UserSession entity =
@@ -730,7 +702,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     return entity;
   }
 
-  // xgp
   private UserSession createUserSessionEntityInstance(
       String id,
       String realmId,
@@ -760,7 +731,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         .build();
   }
 
-  // xgp
   private AuthenticatedClientSessionValue createAuthenticatedClientSessionEntityInstance(
       String id, String clientId, boolean offline) {
     return AuthenticatedClientSessionValue.builder()
@@ -772,7 +742,6 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         .build();
   }
 
-  // xgp
   private AuthenticatedClientSessionValue createAuthenticatedClientSessionInstance(
       AuthenticatedClientSessionModel clientSession, boolean offline) {
     AuthenticatedClientSessionValue entity =

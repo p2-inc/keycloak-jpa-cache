@@ -33,7 +33,7 @@ public class SingleUseObject {
   protected Date expiresAt;
 
   @Builder.Default
-  @ElementCollection
+  @ElementCollection(fetch = FetchType.EAGER)
   @MapKeyColumn(name = "NAME")
   @Column(name = "VALUE")
   @CollectionTable(

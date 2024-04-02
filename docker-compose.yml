@@ -9,7 +9,7 @@ services:
     image: quay.io/keycloak/keycloak:23.0.4
     volumes:
       - h2_data:/opt/keycloak/data
-      - ${PWD}/target/keycloak-jpa-cache-0.1-SNAPSHOT.jar:/opt/keycloak/providers/keycloak-jpa-cache.jar
+      - ${PWD}/target/keycloak-jpa-cache-0.1-SNAPSHOT.jar:/opt/keycloak/providers/keycloak-jpa-cache-0.1-SNAPSHOT.jar
     environment:
       KC_COMMUNITY_JPA_CACHE_ENABLED: true
       KC_CACHE: local
