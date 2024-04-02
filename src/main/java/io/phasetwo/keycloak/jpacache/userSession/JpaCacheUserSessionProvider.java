@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setClientSessionExpiration;
@@ -188,7 +189,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     entity.setPersistenceState(persistenceState);
     setUserSessionExpiration(entity, SessionExpirationData.builder().realm(realm).build());
     if (id == null) {
-      entity.setId(KeycloakModelUtils.generateId().toString());
+      entity.setId(KeycloakModelUtils.generateId());
     }
     /* need to understand more about persistenceState */
     if (TRANSIENT == persistenceState) {
@@ -352,21 +353,19 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     return getUserSessionsStream(realm, client).count();
   }
 
-  // xgp TODO
+  // xgp
   @Override
   public Map<String, Long> getActiveClientSessionStats(RealmModel realm, boolean offline) {
     log.tracef("getActiveClientSessionStats(%s, %s)%s", realm, offline, getShortStackTrace());
 
-    throw new UnsupportedOperationException("TODO!");
-    /*
-    return userSessionRepository.findAll().stream()
-        .filter(s -> s.getRealmId().equals(realm.getId()))
-        .filter(s -> s.getOffline() == offline)
+    var query = entityManager.createNamedQuery("findUserSessions", UserSession.class);
+    query.setParameter("realmId", realm.getId());
+    query.setParameter("offline", offline);
+    return query.getResultStream()
         .map(entityToAdapterFunc(realm))
         .filter(Objects::nonNull).map(UserSessionModel::getAuthenticatedClientSessions)
         .map(Map::keySet).flatMap(Collection::stream)
         .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-    */
   }
 
   // xgp
@@ -534,6 +533,9 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
       UserSession userSession = userSessionEntity.get();
       String clientId = clientSession.getClient().getClientId();
       userSession.getClientSessions().put(clientId, clientSessionEntity);
+
+      entityManager.persist(userSession);
+      entityManager.flush();
 
       UserSessionModel userSessionModel = entityToAdapterFunc(realm).apply(userSession);
       return userSessionModel == null
