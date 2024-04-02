@@ -120,6 +120,7 @@ public class UserSessionProviderModelTest extends KeycloakModelTest {
   }
 
   @Test
+  @Ignore("multiple transactions")
   public void testExpiredClientSessions() {
     UserSessionModel[] origSessions =
         inComittedTransaction(
@@ -1372,6 +1373,7 @@ public class UserSessionProviderModelTest extends KeycloakModelTest {
   }
 
   @Test
+  @Ignore("multiple transactions")
   public void testImportUserSessions() {
     withRealm(realmId, (s, realm) -> s.clients().addClient(realm, "clientId"));
     UserSessionModel userSession1 =

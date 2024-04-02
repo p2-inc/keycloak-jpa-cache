@@ -217,7 +217,7 @@ public class UserSessionExpirationTest extends KeycloakModelTest {
                     .collect(Collectors.toList())),
         hasSize(1));
 
-    Time.setOffset(8);
+    Time.setOffset(10); // this needs to be > clientSessionIdleTimeout
     assertThat(
         withRealm(realmId, (session, realm) -> session.sessions().getUserSession(realm, uSId)),
         nullValue());
@@ -241,7 +241,6 @@ public class UserSessionExpirationTest extends KeycloakModelTest {
         (session, realm) -> {
           realm.setSsoSessionIdleTimeout(1800);
           realm.setSsoSessionMaxLifespan(36000);
-          //if tuning these values different stages of the test will pass
           realm.setClientSessionIdleTimeout(10);
           return null;
         });
@@ -314,7 +313,7 @@ public class UserSessionExpirationTest extends KeycloakModelTest {
                     .collect(Collectors.toList())),
         hasSize(1));
 
-    Thread.sleep(2000);
+    Thread.sleep(4000); // this needs to bring the total to > clientSessionIdleTimeout
     assertThat(
         withRealm(realmId, (session, realm) -> session.sessions().getUserSession(realm, uSId)),
         nullValue());
