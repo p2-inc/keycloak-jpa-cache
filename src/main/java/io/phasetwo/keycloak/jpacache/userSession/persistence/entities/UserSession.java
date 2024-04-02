@@ -1,5 +1,7 @@
 package io.phasetwo.keycloak.jpacache.userSession.persistence.entities;
 
+import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
+
 import io.phasetwo.keycloak.mapstorage.common.ExpirableEntity;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
@@ -18,19 +20,16 @@ import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.keycloak.models.UserSessionModel;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-
-import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
 
 @EqualsAndHashCode(of = "id")
 @Builder(toBuilder = true)
@@ -68,11 +67,12 @@ import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
       query =
           "SELECT count(s) FROM UserSession s WHERE s.realmId = :realmId AND s.offline = :offline"),
   @NamedQuery(
-      name="countClientSessionsByClientIds",
-      query="SELECT clientId, count(*)" +
-          " FROM UserSession u INNER JOIN u.clientSessions clientSessions" +
-          " WHERE u.offline = :offline AND u.realmId = :realmId " +
-          " GROUP BY clientSessions.clientId")
+      name = "countClientSessionsByClientIds",
+      query =
+          "SELECT clientId, count(*)"
+              + " FROM UserSession u INNER JOIN u.clientSessions clientSessions"
+              + " WHERE u.offline = :offline AND u.realmId = :realmId "
+              + " GROUP BY clientSessions.clientId")
 })
 @Entity
 public class UserSession implements ExpirableEntity {
@@ -136,7 +136,10 @@ public class UserSession implements ExpirableEntity {
   private Map<String, AuthenticatedClientSessionValue> clientSessions = new HashMap<>();
 
   @Builder.Default
-  @OneToMany(cascade ={CascadeType.REMOVE}, orphanRemoval = true, mappedBy = "userSession")
+  @OneToMany(
+      cascade = {CascadeType.REMOVE},
+      orphanRemoval = true,
+      mappedBy = "userSession")
   protected Collection<UserSessionToAttributeMapping> attributes = new LinkedList<>();
 
   @Column(name = "PERSISTENCE_STATE")
@@ -166,7 +169,7 @@ public class UserSession implements ExpirableEntity {
   }
 
   @PostPersist
-  void postPersist(){
+  void postPersist() {
     System.out.println("UserSession: " + this.id);
   }
 }

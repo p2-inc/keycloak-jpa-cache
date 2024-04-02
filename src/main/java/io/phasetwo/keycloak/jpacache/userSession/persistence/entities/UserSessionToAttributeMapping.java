@@ -9,13 +9,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
 
 @EqualsAndHashCode(of = {"userSession", "attributeName"})
 @Builder(toBuilder = true)
@@ -26,18 +25,18 @@ import java.util.List;
 @Entity
 public class UserSessionToAttributeMapping {
 
-    @Id
-    @Column(name="ID", length = 36)
-    @Access(AccessType.PROPERTY)
-    protected String id;
+  @Id
+  @Column(name = "ID", length = 36)
+  @Access(AccessType.PROPERTY)
+  protected String id;
 
-    @ManyToOne(fetch= FetchType.LAZY)
-    @JoinColumn(name = "USER_SESSION_ID")
-    private UserSession userSession;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "USER_SESSION_ID")
+  private UserSession userSession;
 
-    @Column(name = "NAME")
-    private String attributeName;
+  @Column(name = "NAME")
+  private String attributeName;
 
-    @Column(name = "VALUE")
-    private List<String> attributeValues;
+  @Column(name = "VALUE")
+  private List<String> attributeValues;
 }

@@ -1,5 +1,13 @@
 package io.phasetwo.keycloak.jpacache.userSession;
 
+import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setClientSessionExpiration;
+import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setUserSessionExpiration;
+import static io.phasetwo.keycloak.mapstorage.common.ExpirationUtils.isExpired;
+import static org.keycloak.common.util.StackUtil.getShortStackTrace;
+import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
+import static org.keycloak.models.UserSessionModel.SessionPersistenceState.TRANSIENT;
+import static org.keycloak.utils.StreamsUtil.closing;
+
 import io.phasetwo.keycloak.jpacache.userSession.expiration.SessionExpirationData;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.AuthenticatedClientSessionValue;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.UserSession;
@@ -7,6 +15,16 @@ import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.UserSessio
 import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.jbosslog.JBossLog;
 import org.keycloak.common.util.Time;
@@ -20,25 +38,6 @@ import org.keycloak.models.UserModel;
 import org.keycloak.models.UserSessionModel;
 import org.keycloak.models.UserSessionProvider;
 import org.keycloak.models.utils.KeycloakModelUtils;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setClientSessionExpiration;
-import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setUserSessionExpiration;
-import static io.phasetwo.keycloak.mapstorage.common.ExpirationUtils.isExpired;
-import static org.keycloak.common.util.StackUtil.getShortStackTrace;
-import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
-import static org.keycloak.models.UserSessionModel.SessionPersistenceState.TRANSIENT;
-import static org.keycloak.utils.StreamsUtil.closing;
 
 @JBossLog
 @RequiredArgsConstructor
@@ -103,8 +102,11 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     setClientSessionExpiration(
         entity, SessionExpirationData.builder().realm(realm).build(), client);
     userSessionEntity.getClientSessions().put(client.getId(), entity);
-    if (userSessionEntity.getPersistenceState() != null && userSessionEntity.getPersistenceState() == TRANSIENT) {
-      log.tracef("don't persist client session %s, as parent user session is %s", entity, userSessionEntity.getPersistenceState());
+    if (userSessionEntity.getPersistenceState() != null
+        && userSessionEntity.getPersistenceState() == TRANSIENT) {
+      log.tracef(
+          "don't persist client session %s, as parent user session is %s",
+          entity, userSessionEntity.getPersistenceState());
     } else {
       log.tracef("persisted client session %s%s", entity, getShortStackTrace());
       entityManager.persist(entity);
@@ -274,14 +276,15 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         realm, client, firstResult, maxResults, getShortStackTrace());
 
     TypedQuery<AuthenticatedClientSessionValue> query =
-        entityManager.createNamedQuery(
-            "findClientSessionsByClientId", AuthenticatedClientSessionValue.class)
-        .setParameter("realmId", realm.getId())
-        .setParameter("clientId", client.getId())
-        .setFirstResult(firstResult)
-        .setMaxResults(maxResults);
+        entityManager
+            .createNamedQuery("findClientSessionsByClientId", AuthenticatedClientSessionValue.class)
+            .setParameter("realmId", realm.getId())
+            .setParameter("clientId", client.getId())
+            .setFirstResult(firstResult)
+            .setMaxResults(maxResults);
 
-    return query.getResultStream()
+    return query
+        .getResultStream()
         .map(AuthenticatedClientSessionValue::getParentSession)
         .map(entityToAdapterFunc((realm)));
   }
@@ -316,12 +319,12 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
   }
 
   public Stream<UserSession> getUserSessionsByBrokerSessionId(
-          RealmModel realm, String brokerSessionId) {
+      RealmModel realm, String brokerSessionId) {
     log.tracef(
-            "getUserSessionByBrokerSessionId(%s, %s)%s", realm, brokerSessionId, getShortStackTrace());
+        "getUserSessionByBrokerSessionId(%s, %s)%s", realm, brokerSessionId, getShortStackTrace());
 
     TypedQuery<UserSession> query =
-            entityManager.createNamedQuery("findUserSessionsByBrokerSessionId", UserSession.class);
+        entityManager.createNamedQuery("findUserSessionsByBrokerSessionId", UserSession.class);
     query.setParameter("realmId", realm.getId());
     query.setParameter("brokerSessionId", brokerSessionId);
     return query.getResultStream();
@@ -363,12 +366,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     query.setParameter("realmId", realm.getId());
     query.setParameter("offline", offline);
     return closing(query.getResultStream())
-            .collect(
-                    Collectors.toMap(
-                            row -> row[0].toString(),
-                            row -> (Long) row[1]
-                    )
-            );
+        .collect(Collectors.toMap(row -> row[0].toString(), row -> (Long) row[1]));
   }
 
   // xgp
@@ -378,7 +376,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
 
     log.tracef("removeUserSession(%s, %s)%s", realm, session, getShortStackTrace());
 
-    //unlike merge or find, getReference doesn't issue a SELECT sql statement
+    // unlike merge or find, getReference doesn't issue a SELECT sql statement
     UserSession entity = entityManager.getReference(UserSession.class, session.getId());
     if (entity != null) {
       entityManager.remove(entity);
@@ -425,14 +423,16 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     TypedQuery<UserSession> query =
         entityManager.createNamedQuery("findAllUserSessions", UserSession.class);
     query.setParameter("realmId", realm.getId());
-    query.getResultStream().forEach(entity -> {
-        log.infof("removing session %s", entity.getId());
-        entityManager.remove(entity);
-        //entityManager.detach(entity);
-        entityManager.flush();
-      });
+    query
+        .getResultStream()
+        .forEach(
+            entity -> {
+              log.infof("removing session %s", entity.getId());
+              entityManager.remove(entity);
+              // entityManager.detach(entity);
+              entityManager.flush();
+            });
   }
-
 
   // xgp
   @Override
@@ -469,9 +469,15 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
 
     if (correspondingSessionId != null) {
       var userSessionToAttributeMapping =
-              new UserSessionToAttributeMapping(KeycloakModelUtils.generateId(), offlineUserSession, CORRESPONDING_SESSION_ID, Arrays.asList(correspondingSessionId));
+          new UserSessionToAttributeMapping(
+              KeycloakModelUtils.generateId(),
+              offlineUserSession,
+              CORRESPONDING_SESSION_ID,
+              Arrays.asList(correspondingSessionId));
       userSessionEntity.getAttributes().add(userSessionToAttributeMapping);
-      userSessionEntity.getNotes().put(CORRESPONDING_SESSION_ID, correspondingSessionId); // compatibility
+      userSessionEntity
+          .getNotes()
+          .put(CORRESPONDING_SESSION_ID, correspondingSessionId); // compatibility
     }
 
     entityManager.flush();
@@ -559,17 +565,17 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
   // xgp
   @Override
   public UserSessionModel getOfflineUserSessionByBrokerSessionId(
-          RealmModel realm, String brokerSessionId) {
+      RealmModel realm, String brokerSessionId) {
     log.tracef(
-            "getOfflineUserSessionByBrokerSessionId(%s, %s)%s",
-            realm, brokerSessionId, getShortStackTrace());
+        "getOfflineUserSessionByBrokerSessionId(%s, %s)%s",
+        realm, brokerSessionId, getShortStackTrace());
 
     return getUserSessionsByBrokerSessionId(realm, brokerSessionId)
-            .filter(s -> s.getRealmId().equals(realm.getId()))
-            .filter(s -> s.getOffline() != null && s.getOffline())
-            .map(entityToAdapterFunc(realm))
-            .findFirst()
-            .orElse(null);
+        .filter(s -> s.getRealmId().equals(realm.getId()))
+        .filter(s -> s.getOffline() != null && s.getOffline())
+        .map(entityToAdapterFunc(realm))
+        .findFirst()
+        .orElse(null);
   }
 
   // xgp
@@ -687,14 +693,14 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
 
       // TODO
       // return userSessionRepository.findUserSessionsByAttribute(CORRESPONDING_SESSION_ID,
-        // userSessionId).stream();
+      // userSessionId).stream();
     }
 
-      // it's online user session so lookup offline user session by corresponding session id reference
-      String offlineUserSessionId = userSessionEntity.getNotes().get(CORRESPONDING_SESSION_ID);
-      if (offlineUserSessionId != null) {
-          return Stream.of(entityManager.find(UserSession.class, userSessionId));
-      }
+    // it's online user session so lookup offline user session by corresponding session id reference
+    String offlineUserSessionId = userSessionEntity.getNotes().get(CORRESPONDING_SESSION_ID);
+    if (offlineUserSessionId != null) {
+      return Stream.of(entityManager.find(UserSession.class, userSessionId));
+    }
 
     return Stream.empty();
   }

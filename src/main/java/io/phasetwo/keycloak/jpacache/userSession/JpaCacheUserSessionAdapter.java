@@ -290,8 +290,8 @@ public class JpaCacheUserSessionAdapter implements UserSessionModel {
   private boolean filterAndRemoveClientSessionWithoutClient(
       AuthenticatedClientSessionValue clientSession) {
 
-    //ClientModel client = realm.getClientById(clientSession.getClientId());
-    //entityManager.joinTransaction();
+    // ClientModel client = realm.getClientById(clientSession.getClientId());
+    // entityManager.joinTransaction();
 
     // entity manager closed?
     var client = entityManager.find(ClientEntity.class, clientSession.getClientId());

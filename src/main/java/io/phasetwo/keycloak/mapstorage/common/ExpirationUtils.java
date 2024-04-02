@@ -16,8 +16,8 @@
 
 package io.phasetwo.keycloak.mapstorage.common;
 
-import org.keycloak.common.util.Time;
 import lombok.extern.jbosslog.JBossLog;
+import org.keycloak.common.util.Time;
 
 @JBossLog
 public class ExpirationUtils {
@@ -37,7 +37,9 @@ public class ExpirationUtils {
     if (!allowInfiniteValues && expiration == null) return false;
     long now = Time.currentTimeMillis();
     boolean expired = expiration != null && expiration <= now;
-    log.tracef("isExpired %d <= %d ? %b %s", expiration, now, expired, expiration != null ? expiration - now : 0);
+    log.tracef(
+        "isExpired %d <= %d ? %b %s",
+        expiration, now, expired, expiration != null ? expiration - now : 0);
     return expired;
   }
 

@@ -24,7 +24,7 @@ import lombok.*;
   @NamedQuery(
       name = "countClientSessions",
       query =
-      "SELECT COUNT(s) FROM AuthenticatedClientSessionValue s WHERE s.parentSession.realmId = :realmId AND s.clientId = :clientId"),
+          "SELECT COUNT(s) FROM AuthenticatedClientSessionValue s WHERE s.parentSession.realmId = :realmId AND s.clientId = :clientId"),
   @NamedQuery(
       name = "countOfflineClientSessions",
       query =
@@ -89,7 +89,7 @@ public class AuthenticatedClientSessionValue implements ExpirableEntity {
   }
 
   @PostPersist
-  void postPersist(){
+  void postPersist() {
     System.out.println("AuthenticatedClientSessionValue: " + this.id);
   }
 }
