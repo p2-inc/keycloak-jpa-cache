@@ -66,7 +66,13 @@ import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
   @NamedQuery(
       name = "countOfflineUserSessions",
       query =
-          "SELECT count(s) FROM UserSession s WHERE s.realmId = :realmId AND s.offline = :offline")
+          "SELECT count(s) FROM UserSession s WHERE s.realmId = :realmId AND s.offline = :offline"),
+  @NamedQuery(
+      name="countClientSessionsByClientIds",
+      query="SELECT clientId, count(*)" +
+          " FROM UserSession u INNER JOIN u.clientSessions clientSessions" +
+          " WHERE u.offline = :offline AND u.realmId = :realmId " +
+          " GROUP BY clientSessions.clientId")
 })
 @Entity
 public class UserSession implements ExpirableEntity {
@@ -156,7 +162,7 @@ public class UserSession implements ExpirableEntity {
   }
 
   public boolean isOffline() {
-    return offline != null ? offline.booleanValue() : false;
+    return offline != null ? offline : false;
   }
 
   @PostPersist
