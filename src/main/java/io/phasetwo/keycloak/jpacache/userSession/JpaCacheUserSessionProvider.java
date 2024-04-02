@@ -38,6 +38,7 @@ import static io.phasetwo.keycloak.mapstorage.common.ExpirationUtils.isExpired;
 import static org.keycloak.common.util.StackUtil.getShortStackTrace;
 import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
 import static org.keycloak.models.UserSessionModel.SessionPersistenceState.TRANSIENT;
+import static org.keycloak.utils.StreamsUtil.closing;
 
 @JBossLog
 @RequiredArgsConstructor
@@ -358,14 +359,16 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
   public Map<String, Long> getActiveClientSessionStats(RealmModel realm, boolean offline) {
     log.tracef("getActiveClientSessionStats(%s, %s)%s", realm, offline, getShortStackTrace());
 
-    var query = entityManager.createNamedQuery("findUserSessions", UserSession.class);
+    var query = entityManager.createNamedQuery("countClientSessionsByClientIds", Object[].class);
     query.setParameter("realmId", realm.getId());
     query.setParameter("offline", offline);
-    return query.getResultStream()
-        .map(entityToAdapterFunc(realm))
-        .filter(Objects::nonNull).map(UserSessionModel::getAuthenticatedClientSessions)
-        .map(Map::keySet).flatMap(Collection::stream)
-        .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+    return closing(query.getResultStream())
+            .collect(
+                    Collectors.toMap(
+                            row -> row[0].toString(),
+                            row -> (Long) row[1]
+                    )
+            );
   }
 
   // xgp
