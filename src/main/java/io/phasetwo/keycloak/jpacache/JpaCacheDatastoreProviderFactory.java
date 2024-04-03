@@ -27,11 +27,14 @@ public class JpaCacheDatastoreProviderFactory extends DefaultDatastoreProviderFa
 
   @Override
   public DatastoreProvider create(KeycloakSession session) {
-    log.tracef("Creating JpaCacheDatastoreProvider...");
+    log.infof("Creating JpaCacheDatastoreProvider...");
     return createProviderCached(
         session, DatastoreProvider.class, () -> new JpaCacheDatastoreProvider(this, session));
   }
 
+
+
+  
   @Override
   public int order() {
     return PROVIDER_PRIORITY + 1;
