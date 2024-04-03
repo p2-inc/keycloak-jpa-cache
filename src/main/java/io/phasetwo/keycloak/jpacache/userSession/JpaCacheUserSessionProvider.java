@@ -1,18 +1,18 @@
 package io.phasetwo.keycloak.jpacache.userSession;
 
+import static io.phasetwo.keycloak.common.ExpirationUtils.isExpired;
 import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setClientSessionExpiration;
 import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setUserSessionExpiration;
-import static io.phasetwo.keycloak.mapstorage.common.ExpirationUtils.isExpired;
 import static org.keycloak.common.util.StackUtil.getShortStackTrace;
 import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
 import static org.keycloak.models.UserSessionModel.SessionPersistenceState.TRANSIENT;
 import static org.keycloak.utils.StreamsUtil.closing;
 
+import io.phasetwo.keycloak.common.TimeAdapter;
 import io.phasetwo.keycloak.jpacache.userSession.expiration.SessionExpirationData;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.AuthenticatedClientSessionValue;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.UserSession;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.UserSessionToAttributeMapping;
-import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.util.Arrays;

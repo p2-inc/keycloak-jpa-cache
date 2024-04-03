@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package io.phasetwo.keycloak.mapstorage.common;
+package io.phasetwo.keycloak.common;
 
 import lombok.extern.jbosslog.JBossLog;
 import org.keycloak.common.util.Time;

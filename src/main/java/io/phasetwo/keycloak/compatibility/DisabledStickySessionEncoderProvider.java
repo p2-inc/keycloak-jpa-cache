@@ -15,38 +15,48 @@
  * limitations under the License.
  */
 
-package io.phasetwo.keycloak.mapstorage.keys;
+package io.phasetwo.keycloak.compatibility;
 
 import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
 import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
 
 import com.google.auto.service.AutoService;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.FutureTask;
 import org.keycloak.Config;
-import org.keycloak.crypto.PublicKeysWrapper;
-import org.keycloak.keys.PublicKeyStorageProviderFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.EnvironmentDependentProviderFactory;
+import org.keycloak.sessions.StickySessionEncoderProvider;
+import org.keycloak.sessions.StickySessionEncoderProviderFactory;
 
-@SuppressWarnings("rawtypes")
-@AutoService(PublicKeyStorageProviderFactory.class)
-public class MapPublicKeyStorageProviderFactory
-    implements PublicKeyStorageProviderFactory<MapPublicKeyStorageProvider>,
+/**
+ * Identical with "disabled"-provider from map storage days but without environment dependent
+ * activation
+ */
+@AutoService(StickySessionEncoderProviderFactory.class)
+public class DisabledStickySessionEncoderProvider
+    implements StickySessionEncoderProviderFactory,
+        StickySessionEncoderProvider,
         EnvironmentDependentProviderFactory {
 
-  private final Map<String, FutureTask<PublicKeysWrapper>> tasksInProgress =
-      new ConcurrentHashMap<>();
+  @Override
+  public StickySessionEncoderProvider create(KeycloakSession session) {
+    return createProviderCached(session, StickySessionEncoderProvider.class, () -> this);
+  }
 
   @Override
-  public MapPublicKeyStorageProvider create(KeycloakSession session) {
-    return createProviderCached(
-        session,
-        MapPublicKeyStorageProvider.class,
-        () -> new MapPublicKeyStorageProvider(session, tasksInProgress));
+  public String encodeSessionId(String sessionId) {
+    return sessionId;
+  }
+
+  @Override
+  public String decodeSessionId(String encodedSessionId) {
+    return encodedSessionId;
+  }
+
+  @Override
+  public boolean shouldAttachRoute() {
+    return false;
   }
 
   @Override

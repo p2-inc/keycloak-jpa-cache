@@ -1,6 +1,6 @@
 package io.phasetwo.keycloak.jpacache.userSession.persistence.entities;
 
-import io.phasetwo.keycloak.mapstorage.common.ExpirableEntity;
+import io.phasetwo.keycloak.common.ExpirableEntity;
 import jakarta.persistence.*;
 import java.util.HashMap;
 import java.util.Map;

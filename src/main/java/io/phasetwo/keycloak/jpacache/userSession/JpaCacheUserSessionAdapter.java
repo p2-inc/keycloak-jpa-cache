@@ -1,13 +1,13 @@
 package io.phasetwo.keycloak.jpacache.userSession;
 
+import static io.phasetwo.keycloak.common.ExpirationUtils.isExpired;
 import static io.phasetwo.keycloak.jpacache.userSession.expiration.JpaCacheSessionExpiration.setUserSessionExpiration;
-import static io.phasetwo.keycloak.mapstorage.common.ExpirationUtils.isExpired;
 
+import io.phasetwo.keycloak.common.TimeAdapter;
 import io.phasetwo.keycloak.jpacache.AttributeTypes;
 import io.phasetwo.keycloak.jpacache.userSession.expiration.SessionExpirationData;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.AuthenticatedClientSessionValue;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.UserSession;
-import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import jakarta.persistence.EntityManager;
 import java.util.*;
 import java.util.stream.Collectors;

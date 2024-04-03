@@ -14,59 +14,61 @@
  *  limitations under the License.
  */
 
-package io.phasetwo.keycloak.infinispan;
+package io.phasetwo.keycloak.compatibility;
 
 import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
 import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
 
 import com.google.auto.service.AutoService;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import lombok.extern.jbosslog.JBossLog;
-import org.infinispan.Cache;
-import org.infinispan.client.hotrod.RemoteCache;
 import org.keycloak.Config;
-import org.keycloak.connections.infinispan.InfinispanConnectionProvider;
-import org.keycloak.connections.infinispan.InfinispanConnectionProviderFactory;
-import org.keycloak.connections.infinispan.TopologyInfo;
+import org.keycloak.cluster.*;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.EnvironmentDependentProviderFactory;
 
 @JBossLog
-@AutoService(InfinispanConnectionProviderFactory.class)
-public class NullQuarkusInfinispanConnectionProviderFactory
-    implements InfinispanConnectionProviderFactory, EnvironmentDependentProviderFactory {
+@AutoService(ClusterProviderFactory.class)
+public class NullInfinispanClusterProviderFactory
+    implements ClusterProviderFactory, EnvironmentDependentProviderFactory {
   @Override
   public boolean isSupported(Config.Scope config) {
     return isJpaCacheEnabled();
   }
 
   @Override
-  public InfinispanConnectionProvider create(KeycloakSession session) {
+  public ClusterProvider create(KeycloakSession session) {
     return createProviderCached(
         session,
-        InfinispanConnectionProvider.class,
+        ClusterProvider.class,
         () ->
-            new InfinispanConnectionProvider() {
+            new ClusterProvider() {
               @Override
-              public <K, V> Cache<K, V> getCache(String s) {
+              public int getClusterStartupTime() {
+                return 0;
+              }
+
+              @Override
+              public <T> ExecutionResult<T> executeIfNotExecuted(
+                  String taskKey, int taskTimeoutInSeconds, Callable<T> task) {
                 return null;
               }
 
               @Override
-              public <K, V> Cache<K, V> getCache(String s, boolean b) {
+              public Future<Boolean> executeIfNotExecutedAsync(
+                  String taskKey, int taskTimeoutInSeconds, Callable task) {
                 return null;
               }
 
               @Override
-              public <K, V> RemoteCache<K, V> getRemoteCache(String s) {
-                return null;
-              }
+              public void registerListener(String taskKey, ClusterListener task) {}
 
               @Override
-              public TopologyInfo getTopologyInfo() {
-                return null;
-              }
+              public void notify(
+                  String taskKey, ClusterEvent event, boolean ignoreSender, DCNotify dcNotify) {}
 
               @Override
               public void close() {}
@@ -75,7 +77,7 @@ public class NullQuarkusInfinispanConnectionProviderFactory
 
   @Override
   public void init(Config.Scope config) {
-    log.info("Infinispan (quarkus) deactivated...");
+    log.info("Infinispan-ClusterProvider deactivated...");
   }
 
   @Override
@@ -91,6 +93,6 @@ public class NullQuarkusInfinispanConnectionProviderFactory
 
   @Override
   public String getId() {
-    return "quarkus";
+    return "infinispan";
   }
 }

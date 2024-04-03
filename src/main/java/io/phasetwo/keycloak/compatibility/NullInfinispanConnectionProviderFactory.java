@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package io.phasetwo.keycloak.infinispan;
+package io.phasetwo.keycloak.compatibility;
 
 import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
 import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;

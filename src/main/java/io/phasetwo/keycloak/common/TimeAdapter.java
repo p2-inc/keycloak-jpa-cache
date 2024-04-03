@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package io.phasetwo.keycloak.mapstorage.common;
+package io.phasetwo.keycloak.common;
 
 import java.util.concurrent.TimeUnit;
 import org.jboss.logging.Logger;

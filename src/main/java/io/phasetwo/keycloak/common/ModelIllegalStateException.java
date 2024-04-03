@@ -14,23 +14,22 @@
  *  limitations under the License.
  */
 
-package io.phasetwo.keycloak.mapstorage.common;
+package io.phasetwo.keycloak.common;
 
-import org.keycloak.provider.InvalidationHandler;
+import org.keycloak.models.ModelException;
 
-public enum MapProviderObjectType implements InvalidationHandler.InvalidableObjectType {
-  CLIENT_BEFORE_REMOVE,
-  CLIENT_AFTER_REMOVE,
-  CLIENT_SCOPE_BEFORE_REMOVE,
-  CLIENT_SCOPE_AFTER_REMOVE,
-  GROUP_BEFORE_REMOVE,
-  GROUP_AFTER_REMOVE,
-  REALM_BEFORE_REMOVE,
-  REALM_AFTER_REMOVE,
-  RESOURCE_SERVER_BEFORE_REMOVE,
-  RESOURCE_SERVER_AFTER_REMOVE,
-  ROLE_BEFORE_REMOVE,
-  ROLE_AFTER_REMOVE,
-  USER_BEFORE_REMOVE,
-  USER_AFTER_REMOVE
+public class ModelIllegalStateException extends ModelException {
+  public ModelIllegalStateException() {}
+
+  public ModelIllegalStateException(String message) {
+    super(message);
+  }
+
+  public ModelIllegalStateException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public ModelIllegalStateException(Throwable cause) {
+    super(cause);
+  }
 }

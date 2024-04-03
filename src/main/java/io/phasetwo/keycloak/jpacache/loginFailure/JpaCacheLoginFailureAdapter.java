@@ -1,7 +1,7 @@
 package io.phasetwo.keycloak.jpacache.loginFailure;
 
+import io.phasetwo.keycloak.common.TimeAdapter;
 import io.phasetwo.keycloak.jpacache.loginFailure.persistence.entities.LoginFailure;
-import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import org.keycloak.models.RealmModel;

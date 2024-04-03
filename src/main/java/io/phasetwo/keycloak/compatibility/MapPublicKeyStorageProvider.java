@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package io.phasetwo.keycloak.mapstorage.keys;
+package io.phasetwo.keycloak.compatibility;
 
 import java.util.Collections;
 import java.util.List;

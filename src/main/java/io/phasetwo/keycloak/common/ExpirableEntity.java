@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package io.phasetwo.keycloak.mapstorage.common;
+package io.phasetwo.keycloak.common;
 
 /**
  * This interface provides a way for marking entities that can expire. For example, user sessions

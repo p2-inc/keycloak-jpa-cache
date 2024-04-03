@@ -2,9 +2,9 @@ package io.phasetwo.keycloak.jpacache.authSession;
 
 import static org.keycloak.models.utils.SessionExpiration.getAuthSessionLifespan;
 
+import io.phasetwo.keycloak.common.TimeAdapter;
 import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.AuthenticationSession;
 import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.RootAuthenticationSession;
-import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.util.*;
