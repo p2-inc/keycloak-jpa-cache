@@ -18,8 +18,8 @@
 package io.phasetwo.keycloak.mapstorage.keys;
 
 import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
+import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
-import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
 
 import com.google.auto.service.AutoService;
 import java.util.Map;
@@ -32,6 +32,7 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.provider.EnvironmentDependentProviderFactory;
 
+@SuppressWarnings("rawtypes")
 @AutoService(PublicKeyStorageProviderFactory.class)
 public class MapPublicKeyStorageProviderFactory
     implements PublicKeyStorageProviderFactory<MapPublicKeyStorageProvider>,
@@ -68,7 +69,7 @@ public class MapPublicKeyStorageProviderFactory
   }
 
   @Override
-  public boolean isSupported() {
+  public boolean isSupported(Config.Scope config) {
     return isJpaCacheEnabled();
   }
 }

@@ -1,19 +1,22 @@
 package io.phasetwo.keycloak.jpacache;
 
 import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
+import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
-import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
 
 import com.google.auto.service.AutoService;
 import lombok.extern.jbosslog.JBossLog;
+import org.keycloak.Config;
 import org.keycloak.models.*;
+import org.keycloak.provider.EnvironmentDependentProviderFactory;
 import org.keycloak.storage.DatastoreProvider;
 import org.keycloak.storage.DatastoreProviderFactory;
-import org.keycloak.storage.datastore.LegacyDatastoreProviderFactory;
+import org.keycloak.storage.datastore.DefaultDatastoreProviderFactory;
 
 @JBossLog
 @AutoService(DatastoreProviderFactory.class)
-public class JpaCacheDatastoreProviderFactory extends LegacyDatastoreProviderFactory {
+public class JpaCacheDatastoreProviderFactory extends DefaultDatastoreProviderFactory
+    implements EnvironmentDependentProviderFactory {
   private static final String PROVIDER_ID =
       "legacy"; // Override legacy provider to disable timers / event listeners and stuff...
 
@@ -35,7 +38,7 @@ public class JpaCacheDatastoreProviderFactory extends LegacyDatastoreProviderFac
   }
 
   @Override
-  public boolean isSupported() {
+  public boolean isSupported(Config.Scope config) {
     return isJpaCacheEnabled();
   }
 }

@@ -36,7 +36,6 @@ import org.keycloak.models.dblock.DBLockSpi;
 import org.keycloak.models.jpa.*;
 import org.keycloak.models.jpa.JpaDeploymentStateProviderFactory;
 import org.keycloak.models.jpa.session.JpaUserSessionPersisterProviderFactory;
-import org.keycloak.models.locking.NoneGlobalLockProviderFactory;
 import org.keycloak.models.session.UserSessionPersisterSpi;
 import org.keycloak.policy.*;
 import org.keycloak.protocol.LoginProtocolFactory;
@@ -49,7 +48,7 @@ import org.keycloak.services.clientregistration.policy.ClientRegistrationPolicyS
 import org.keycloak.services.clientregistration.policy.impl.*;
 import org.keycloak.sessions.AuthenticationSessionSpi;
 import org.keycloak.storage.DatastoreSpi;
-import org.keycloak.storage.datastore.LegacyDatastoreProviderFactory;
+import org.keycloak.storage.datastore.DefaultDatastoreProviderFactory;
 
 public class JpaCacheParameters extends KeycloakModelParameters {
 
@@ -115,7 +114,7 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(JpaUpdaterProviderFactory.class)
           .add(JpaUserProviderFactory.class)
           .add(JpaUserSessionPersisterProviderFactory.class)
-          .add(LegacyDatastoreProviderFactory.class)
+          .add(DefaultDatastoreProviderFactory.class)
           .add(LiquibaseConnectionProviderFactory.class)
           .add(LiquibaseDBLockProviderFactory.class)
           .add(JpaDeploymentStateProviderFactory.class)
@@ -123,7 +122,6 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(MapPublicKeyStorageProviderFactory.class)
           .add(MaxClientsClientRegistrationPolicyFactory.class)
           .add(MigrationProviderFactory.class)
-          .add(NoneGlobalLockProviderFactory.class)
           .add(OTPCredentialProviderFactory.class)
           .add(PasswordCredentialProviderFactory.class)
           .add(Pbkdf2Sha256PasswordHashProviderFactory.class)

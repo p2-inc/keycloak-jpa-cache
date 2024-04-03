@@ -17,10 +17,10 @@
 
 package io.phasetwo.keycloak.jpacache.testsuite.session;
 
+import static io.phasetwo.keycloak.jpacache.testsuite.LockObjectsForModification.lockUserSessionsForModification;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.aMapWithSize;
 import static org.hamcrest.Matchers.startsWith;
-import static org.keycloak.utils.LockObjectsForModification.lockUserSessionsForModification;
 
 import io.phasetwo.keycloak.jpacache.testsuite.KeycloakModelTest;
 import java.util.concurrent.CountDownLatch;

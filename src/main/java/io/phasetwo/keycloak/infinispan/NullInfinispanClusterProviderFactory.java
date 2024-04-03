@@ -17,8 +17,8 @@
 package io.phasetwo.keycloak.infinispan;
 
 import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
+import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
-import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
 
 import com.google.auto.service.AutoService;
 import java.util.concurrent.Callable;
@@ -35,7 +35,7 @@ import org.keycloak.provider.EnvironmentDependentProviderFactory;
 public class NullInfinispanClusterProviderFactory
     implements ClusterProviderFactory, EnvironmentDependentProviderFactory {
   @Override
-  public boolean isSupported() {
+  public boolean isSupported(Config.Scope config) {
     return isJpaCacheEnabled();
   }
 

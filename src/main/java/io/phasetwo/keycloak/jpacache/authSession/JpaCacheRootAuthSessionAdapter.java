@@ -99,8 +99,8 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
     List<AuthenticationSession> authSessions = query.getResultList();
     if (authSessions != null && authSessions.size() > 0) {
       log.tracef(
-          "Found %d authSessions for tabId=%s clientId=%s, in rootSession %s", authSessions.size(),
-          tabId, client.getClientId(), rootAuthenticationSession);
+          "Found %d authSessions for tabId=%s clientId=%s, in rootSession %s",
+          authSessions.size(), tabId, client.getClientId(), rootAuthenticationSession);
       return entityToAdapterFunc(realm).apply(authSessions.get(0));
     } else {
       log.tracef(

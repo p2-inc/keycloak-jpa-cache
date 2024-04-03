@@ -17,8 +17,8 @@
 package io.phasetwo.keycloak.infinispan;
 
 import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
+import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
-import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
 
 import com.google.auto.service.AutoService;
 import lombok.extern.jbosslog.JBossLog;
@@ -37,7 +37,7 @@ import org.keycloak.provider.EnvironmentDependentProviderFactory;
 public class NullQuarkusInfinispanConnectionProviderFactory
     implements InfinispanConnectionProviderFactory, EnvironmentDependentProviderFactory {
   @Override
-  public boolean isSupported() {
+  public boolean isSupported(Config.Scope config) {
     return isJpaCacheEnabled();
   }
 
@@ -50,6 +50,11 @@ public class NullQuarkusInfinispanConnectionProviderFactory
             new InfinispanConnectionProvider() {
               @Override
               public <K, V> Cache<K, V> getCache(String s) {
+                return null;
+              }
+
+              @Override
+              public <K, V> Cache<K, V> getCache(String s, boolean b) {
                 return null;
               }
 

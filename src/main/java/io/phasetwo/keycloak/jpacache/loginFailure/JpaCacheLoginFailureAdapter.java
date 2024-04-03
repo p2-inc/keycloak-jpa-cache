@@ -54,6 +54,7 @@ public class JpaCacheLoginFailureAdapter implements UserLoginFailureModel {
     entity.setNumFailures(null);
     entity.setLastFailure(null);
     entity.setLastIpFailure(null);
+    entity.setNumTemporaryLockouts(null);
   }
 
   @Override
@@ -75,5 +76,16 @@ public class JpaCacheLoginFailureAdapter implements UserLoginFailureModel {
   @Override
   public void setLastIPFailure(String ip) {
     entity.setLastIpFailure(ip);
+  }
+
+  @Override
+  public void incrementTemporaryLockouts() {
+    entity.setNumTemporaryLockouts(getNumTemporaryLockouts() + 1);
+  }
+
+  @Override
+  public int getNumTemporaryLockouts() {
+    Integer numTemporaryLockouts = entity.getNumTemporaryLockouts();
+    return numTemporaryLockouts == null ? 0 : numTemporaryLockouts;
   }
 }
