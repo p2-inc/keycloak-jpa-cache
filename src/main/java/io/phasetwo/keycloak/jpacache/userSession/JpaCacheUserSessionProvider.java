@@ -8,7 +8,6 @@ import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
 import static org.keycloak.models.UserSessionModel.SessionPersistenceState.TRANSIENT;
 import static org.keycloak.utils.StreamsUtil.closing;
 
-import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.AuthenticationSession;
 import io.phasetwo.keycloak.jpacache.userSession.expiration.SessionExpirationData;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.AuthenticatedClientSessionValue;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.UserSession;
@@ -440,9 +439,7 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     offlineUserSession.setLastSessionRefresh(currentTime);
     setUserSessionExpiration(
         offlineUserSession, SessionExpirationData.builder().realm(userSession.getRealm()).build());
-    offlineUserSession
-            .getNotes()
-            .put(CORRESPONDING_SESSION_ID, userSession.getId()); // compatibility
+
     entityManager.persist(offlineUserSession);
 
     // TODO
