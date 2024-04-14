@@ -8,6 +8,7 @@ import static org.keycloak.models.UserSessionModel.CORRESPONDING_SESSION_ID;
 import static org.keycloak.models.UserSessionModel.SessionPersistenceState.TRANSIENT;
 import static org.keycloak.utils.StreamsUtil.closing;
 
+import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.AuthenticationSession;
 import io.phasetwo.keycloak.jpacache.userSession.expiration.SessionExpirationData;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.AuthenticatedClientSessionValue;
 import io.phasetwo.keycloak.jpacache.userSession.persistence.entities.UserSession;
@@ -439,7 +440,9 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     offlineUserSession.setLastSessionRefresh(currentTime);
     setUserSessionExpiration(
         offlineUserSession, SessionExpirationData.builder().realm(userSession.getRealm()).build());
-
+    offlineUserSession
+            .getNotes()
+            .put(CORRESPONDING_SESSION_ID, userSession.getId()); // compatibility
     entityManager.persist(offlineUserSession);
 
     // TODO
@@ -664,9 +667,9 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     } else {
       // no session found by the given ID, try to find by corresponding session ID
 
-      // TODO
-      // return userSessionRepository.findUserSessionsByAttribute(CORRESPONDING_SESSION_ID,
-      // userSessionId).stream();
+      // userSessionEntity and UserSessionToAttributeMapping  are cascaded. Removal of one will result the removal of all associations
+      // The NoSql approach will not work in case of the relational approach
+      return Stream.empty();
     }
 
     // it's online user session so lookup offline user session by corresponding session id reference
