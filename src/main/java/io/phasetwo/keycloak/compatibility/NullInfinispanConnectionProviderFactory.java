@@ -14,13 +14,13 @@
  *  limitations under the License.
  */
 
-package io.phasetwo.keycloak.infinispan;
+package io.phasetwo.keycloak.compatibility;
 
-import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
+import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
-import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
 
 import com.google.auto.service.AutoService;
+import io.phasetwo.keycloak.common.IsSupported;
 import lombok.extern.jbosslog.JBossLog;
 import org.infinispan.Cache;
 import org.infinispan.client.hotrod.RemoteCache;
@@ -30,16 +30,11 @@ import org.keycloak.connections.infinispan.InfinispanConnectionProviderFactory;
 import org.keycloak.connections.infinispan.TopologyInfo;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.provider.EnvironmentDependentProviderFactory;
 
 @JBossLog
 @AutoService(InfinispanConnectionProviderFactory.class)
-public class NullQuarkusInfinispanConnectionProviderFactory
-    implements InfinispanConnectionProviderFactory, EnvironmentDependentProviderFactory {
-  @Override
-  public boolean isSupported() {
-    return isJpaCacheEnabled();
-  }
+public class NullInfinispanConnectionProviderFactory
+    implements InfinispanConnectionProviderFactory, IsSupported {
 
   @Override
   public InfinispanConnectionProvider create(KeycloakSession session) {
@@ -50,6 +45,11 @@ public class NullQuarkusInfinispanConnectionProviderFactory
             new InfinispanConnectionProvider() {
               @Override
               public <K, V> Cache<K, V> getCache(String s) {
+                return null;
+              }
+
+              @Override
+              public <K, V> Cache<K, V> getCache(String s, boolean b) {
                 return null;
               }
 
@@ -70,7 +70,7 @@ public class NullQuarkusInfinispanConnectionProviderFactory
 
   @Override
   public void init(Config.Scope config) {
-    log.info("Infinispan (quarkus) deactivated...");
+    log.info("Infinispan deactivated...");
   }
 
   @Override
@@ -86,6 +86,6 @@ public class NullQuarkusInfinispanConnectionProviderFactory
 
   @Override
   public String getId() {
-    return "quarkus";
+    return "default";
   }
 }

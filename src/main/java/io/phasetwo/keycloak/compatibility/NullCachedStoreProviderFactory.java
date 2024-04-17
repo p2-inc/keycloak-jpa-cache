@@ -14,13 +14,13 @@
  *  limitations under the License.
  */
 
-package io.phasetwo.keycloak.infinispan;
+package io.phasetwo.keycloak.compatibility;
 
-import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
+import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
-import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
 
 import com.google.auto.service.AutoService;
+import io.phasetwo.keycloak.common.IsSupported;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -33,16 +33,13 @@ import org.keycloak.authorization.store.*;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.models.RealmModel;
 import org.keycloak.models.cache.authorization.CachedStoreFactoryProvider;
 import org.keycloak.models.cache.authorization.CachedStoreProviderFactory;
-import org.keycloak.provider.EnvironmentDependentProviderFactory;
 import org.keycloak.representations.idm.authorization.AbstractPolicyRepresentation;
 
 @JBossLog
 @AutoService(CachedStoreProviderFactory.class)
-public class NullCachedStoreProviderFactory
-    implements CachedStoreProviderFactory, EnvironmentDependentProviderFactory {
+public class NullCachedStoreProviderFactory implements CachedStoreProviderFactory, IsSupported {
   @Override
   public CachedStoreFactoryProvider create(KeycloakSession session) {
     return createProviderCached(
@@ -60,20 +57,16 @@ public class NullCachedStoreProviderFactory
                   }
 
                   @Override
-                  public void delete(RealmModel realm, String id) {}
+                  public void delete(String id) {}
 
                   @Override
-                  public Resource findById(
-                      RealmModel realm, ResourceServer resourceServer, String id) {
+                  public Resource findById(ResourceServer resourceServer, String id) {
                     return null;
                   }
 
                   @Override
                   public void findByOwner(
-                      RealmModel realm,
-                      ResourceServer resourceServer,
-                      String ownerId,
-                      Consumer<Resource> consumer) {}
+                      ResourceServer resourceServer, String ownerId, Consumer<Resource> consumer) {}
 
                   @Override
                   public List<Resource> findByResourceServer(ResourceServer resourceServer) {
@@ -82,7 +75,6 @@ public class NullCachedStoreProviderFactory
 
                   @Override
                   public List<Resource> find(
-                      RealmModel realm,
                       ResourceServer resourceServer,
                       Map<Resource.FilterOption, String[]> attributes,
                       Integer firstResult,
@@ -131,7 +123,7 @@ public class NullCachedStoreProviderFactory
                   public void delete(ClientModel client) {}
 
                   @Override
-                  public ResourceServer findById(RealmModel realm, String id) {
+                  public ResourceServer findById(String id) {
                     return null;
                   }
 
@@ -151,11 +143,10 @@ public class NullCachedStoreProviderFactory
                   }
 
                   @Override
-                  public void delete(RealmModel realm, String id) {}
+                  public void delete(String id) {}
 
                   @Override
-                  public Scope findById(
-                      RealmModel realm, ResourceServer resourceServer, String id) {
+                  public Scope findById(ResourceServer resourceServer, String id) {
                     return null;
                   }
 
@@ -190,11 +181,10 @@ public class NullCachedStoreProviderFactory
                   }
 
                   @Override
-                  public void delete(RealmModel realm, String id) {}
+                  public void delete(String id) {}
 
                   @Override
-                  public Policy findById(
-                      RealmModel realm, ResourceServer resourceServer, String id) {
+                  public Policy findById(ResourceServer resourceServer, String id) {
                     return null;
                   }
 
@@ -210,7 +200,6 @@ public class NullCachedStoreProviderFactory
 
                   @Override
                   public List<Policy> find(
-                      RealmModel realm,
                       ResourceServer resourceServer,
                       Map<Policy.FilterOption, String[]> attributes,
                       Integer firstResult,
@@ -276,11 +265,10 @@ public class NullCachedStoreProviderFactory
                   }
 
                   @Override
-                  public void delete(RealmModel realm, String id) {}
+                  public void delete(String id) {}
 
                   @Override
-                  public PermissionTicket findById(
-                      RealmModel realm, ResourceServer resourceServer, String id) {
+                  public PermissionTicket findById(ResourceServer resourceServer, String id) {
                     return null;
                   }
 
@@ -298,7 +286,6 @@ public class NullCachedStoreProviderFactory
 
                   @Override
                   public List<PermissionTicket> find(
-                      RealmModel realm,
                       ResourceServer resourceServer,
                       Map<PermissionTicket.FilterOption, String> attributes,
                       Integer firstResult,
@@ -320,17 +307,13 @@ public class NullCachedStoreProviderFactory
 
                   @Override
                   public List<Resource> findGrantedResources(
-                      RealmModel realm,
-                      String requester,
-                      String name,
-                      Integer firstResult,
-                      Integer maxResults) {
+                      String requester, String name, Integer firstResult, Integer maxResults) {
                     return Collections.emptyList();
                   }
 
                   @Override
                   public List<Resource> findGrantedOwnerResources(
-                      RealmModel realm, String owner, Integer firstResult, Integer maxResults) {
+                      String owner, Integer firstResult, Integer maxResults) {
                     return Collections.emptyList();
                   }
                 };
@@ -368,10 +351,5 @@ public class NullCachedStoreProviderFactory
   @Override
   public String getId() {
     return "default";
-  }
-
-  @Override
-  public boolean isSupported() {
-    return isJpaCacheEnabled();
   }
 }

@@ -1,21 +1,20 @@
 package io.phasetwo.keycloak.jpacache.loginFailure;
 
-import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
-import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
+import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 
 import com.google.auto.service.AutoService;
+import io.phasetwo.keycloak.common.IsSupported;
 import jakarta.persistence.EntityManager;
 import org.keycloak.Config;
 import org.keycloak.connections.jpa.JpaConnectionProvider;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.UserLoginFailureProviderFactory;
-import org.keycloak.provider.EnvironmentDependentProviderFactory;
 
+@SuppressWarnings("rawtypes")
 @AutoService(UserLoginFailureProviderFactory.class)
 public class JpaCacheLoginFailureProviderFactory
-    implements UserLoginFailureProviderFactory<JpaCacheLoginFailureProvider>,
-        EnvironmentDependentProviderFactory {
+    implements UserLoginFailureProviderFactory<JpaCacheLoginFailureProvider>, IsSupported {
 
   @Override
   public JpaCacheLoginFailureProvider create(KeycloakSession session) {
@@ -40,10 +39,5 @@ public class JpaCacheLoginFailureProviderFactory
   @Override
   public int order() {
     return PROVIDER_PRIORITY + 1;
-  }
-
-  @Override
-  public boolean isSupported() {
-    return isJpaCacheEnabled();
   }
 }

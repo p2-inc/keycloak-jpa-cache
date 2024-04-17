@@ -1,21 +1,20 @@
 package io.phasetwo.keycloak.jpacache.singleUseObject;
 
-import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
-import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
+import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 
 import com.google.auto.service.AutoService;
+import io.phasetwo.keycloak.common.IsSupported;
 import jakarta.persistence.EntityManager;
 import org.keycloak.Config;
 import org.keycloak.connections.jpa.JpaConnectionProvider;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.SingleUseObjectProviderFactory;
-import org.keycloak.provider.EnvironmentDependentProviderFactory;
 
+@SuppressWarnings("rawtypes")
 @AutoService(SingleUseObjectProviderFactory.class)
 public class JpaCacheSingleUseObjectProviderFactory
-    implements SingleUseObjectProviderFactory<JpaCacheSingleUseObjectProvider>,
-        EnvironmentDependentProviderFactory {
+    implements SingleUseObjectProviderFactory<JpaCacheSingleUseObjectProvider>, IsSupported {
 
   @Override
   public JpaCacheSingleUseObjectProvider create(KeycloakSession session) {
@@ -40,10 +39,5 @@ public class JpaCacheSingleUseObjectProviderFactory
   @Override
   public int order() {
     return PROVIDER_PRIORITY + 1;
-  }
-
-  @Override
-  public boolean isSupported() {
-    return isJpaCacheEnabled();
   }
 }

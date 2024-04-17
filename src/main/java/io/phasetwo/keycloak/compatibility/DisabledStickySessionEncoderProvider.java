@@ -15,17 +15,16 @@
  * limitations under the License.
  */
 
-package io.phasetwo.keycloak.mapstorage.sessions;
+package io.phasetwo.keycloak.compatibility;
 
-import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
+import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
-import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
 
 import com.google.auto.service.AutoService;
+import io.phasetwo.keycloak.common.IsSupported;
 import org.keycloak.Config;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.provider.EnvironmentDependentProviderFactory;
 import org.keycloak.sessions.StickySessionEncoderProvider;
 import org.keycloak.sessions.StickySessionEncoderProviderFactory;
 
@@ -35,9 +34,7 @@ import org.keycloak.sessions.StickySessionEncoderProviderFactory;
  */
 @AutoService(StickySessionEncoderProviderFactory.class)
 public class DisabledStickySessionEncoderProvider
-    implements StickySessionEncoderProviderFactory,
-        StickySessionEncoderProvider,
-        EnvironmentDependentProviderFactory {
+    implements StickySessionEncoderProviderFactory, StickySessionEncoderProvider, IsSupported {
 
   @Override
   public StickySessionEncoderProvider create(KeycloakSession session) {
@@ -76,10 +73,5 @@ public class DisabledStickySessionEncoderProvider
   @Override
   public int order() {
     return PROVIDER_PRIORITY + 1;
-  }
-
-  @Override
-  public boolean isSupported() {
-    return isJpaCacheEnabled();
   }
 }

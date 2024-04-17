@@ -3,10 +3,10 @@ package io.phasetwo.keycloak.jpacache;
 import lombok.extern.jbosslog.JBossLog;
 import org.keycloak.models.*;
 import org.keycloak.sessions.AuthenticationSessionProvider;
-import org.keycloak.storage.datastore.LegacyDatastoreProvider;
+import org.keycloak.storage.datastore.DefaultDatastoreProvider;
 
 @JBossLog
-public class JpaCacheDatastoreProvider extends LegacyDatastoreProvider {
+public class JpaCacheDatastoreProvider extends DefaultDatastoreProvider {
   private final KeycloakSession session;
 
   public JpaCacheDatastoreProvider(

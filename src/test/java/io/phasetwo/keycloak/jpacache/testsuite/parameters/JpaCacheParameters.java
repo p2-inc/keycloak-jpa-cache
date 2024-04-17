@@ -1,6 +1,7 @@
 package io.phasetwo.keycloak.jpacache.testsuite.parameters;
 
 import com.google.common.collect.ImmutableSet;
+import io.phasetwo.keycloak.compatibility.MapPublicKeyStorageProviderFactory;
 import io.phasetwo.keycloak.jpacache.*;
 import io.phasetwo.keycloak.jpacache.authSession.JpaCacheAuthSessionProviderFactory;
 import io.phasetwo.keycloak.jpacache.loginFailure.JpaCacheLoginFailureProviderFactory;
@@ -8,7 +9,6 @@ import io.phasetwo.keycloak.jpacache.singleUseObject.JpaCacheSingleUseObjectProv
 import io.phasetwo.keycloak.jpacache.testsuite.Config;
 import io.phasetwo.keycloak.jpacache.testsuite.KeycloakModelParameters;
 import io.phasetwo.keycloak.jpacache.userSession.JpaCacheUserSessionProviderFactory;
-import io.phasetwo.keycloak.mapstorage.keys.MapPublicKeyStorageProviderFactory;
 import java.util.Set;
 import org.keycloak.authorization.jpa.store.JPAAuthorizationStoreFactory;
 import org.keycloak.broker.provider.IdentityProviderFactory;
@@ -36,7 +36,6 @@ import org.keycloak.models.dblock.DBLockSpi;
 import org.keycloak.models.jpa.*;
 import org.keycloak.models.jpa.JpaDeploymentStateProviderFactory;
 import org.keycloak.models.jpa.session.JpaUserSessionPersisterProviderFactory;
-import org.keycloak.models.locking.NoneGlobalLockProviderFactory;
 import org.keycloak.models.session.UserSessionPersisterSpi;
 import org.keycloak.policy.*;
 import org.keycloak.protocol.LoginProtocolFactory;
@@ -49,7 +48,7 @@ import org.keycloak.services.clientregistration.policy.ClientRegistrationPolicyS
 import org.keycloak.services.clientregistration.policy.impl.*;
 import org.keycloak.sessions.AuthenticationSessionSpi;
 import org.keycloak.storage.DatastoreSpi;
-import org.keycloak.storage.datastore.LegacyDatastoreProviderFactory;
+import org.keycloak.storage.datastore.DefaultDatastoreProviderFactory;
 
 public class JpaCacheParameters extends KeycloakModelParameters {
 
@@ -84,6 +83,7 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(ClientScopesClientRegistrationPolicyFactory.class)
           .add(ConsentRequiredClientRegistrationPolicyFactory.class)
           .add(DefaultClientPolicyManagerFactory.class)
+          .add(DefaultDatastoreProviderFactory.class)
           .add(DefaultJpaConnectionProviderFactory.class)
           .add(DefaultPasswordPolicyManagerProviderFactory.class)
           .add(DeviceRepresentationProviderFactoryImpl.class)
@@ -115,7 +115,6 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(JpaUpdaterProviderFactory.class)
           .add(JpaUserProviderFactory.class)
           .add(JpaUserSessionPersisterProviderFactory.class)
-          .add(LegacyDatastoreProviderFactory.class)
           .add(LiquibaseConnectionProviderFactory.class)
           .add(LiquibaseDBLockProviderFactory.class)
           .add(JpaDeploymentStateProviderFactory.class)
@@ -123,7 +122,6 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(MapPublicKeyStorageProviderFactory.class)
           .add(MaxClientsClientRegistrationPolicyFactory.class)
           .add(MigrationProviderFactory.class)
-          .add(NoneGlobalLockProviderFactory.class)
           .add(OTPCredentialProviderFactory.class)
           .add(PasswordCredentialProviderFactory.class)
           .add(Pbkdf2Sha256PasswordHashProviderFactory.class)

@@ -8,7 +8,7 @@ import java.util.Set;
 import lombok.*;
 import org.keycloak.sessions.CommonClientSessionModel;
 
-@EqualsAndHashCode(of = {"parentSessionId", "tabId"})
+@EqualsAndHashCode(of = {"parentSession", "tabId"})
 @Builder(toBuilder = true)
 @Data
 @NoArgsConstructor

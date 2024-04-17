@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package io.phasetwo.keycloak.mapstorage.keys;
+package io.phasetwo.keycloak.compatibility;
 
 import java.util.Collections;
 import java.util.List;
@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.jboss.logging.Logger;
 import org.keycloak.crypto.KeyWrapper;
 import org.keycloak.crypto.PublicKeysWrapper;
@@ -52,6 +54,53 @@ public class MapPublicKeyStorageProvider implements PublicKeyStorageProvider {
   @Override
   public KeyWrapper getPublicKey(
       String modelKey, String kid, String algorithm, PublicKeyLoader loader) {
+
+    PublicKeysWrapper currentKeys = getKey(modelKey, loader);
+
+    if (currentKeys != null) {
+      KeyWrapper publicKey = currentKeys.getKeyByKidAndAlg(kid, algorithm);
+      if (publicKey != null) {
+        return publicKey;
+      }
+    }
+
+    List<String> availableKids =
+        currentKeys == null ? Collections.emptyList() : currentKeys.getKids();
+    log.warnf(
+        "PublicKey wasn't found in the storage. Requested kid: '%s' . Available kids: '%s'",
+        kid, availableKids);
+
+    return null;
+  }
+
+  @Override
+  public boolean reloadKeys(String modelKey, PublicKeyLoader loader) {
+    return getKey(modelKey, loader) != null;
+  }
+
+  @Override
+  public KeyWrapper getFirstPublicKey(
+      String modelKey, Predicate<KeyWrapper> predicate, PublicKeyLoader loader) {
+    PublicKeysWrapper currentKeys = getKey(modelKey, loader);
+    if (currentKeys != null) {
+      KeyWrapper key = currentKeys.getKeyByPredicate(predicate);
+      if (key != null) {
+        return key.cloneKey();
+      }
+    }
+    return null;
+  }
+
+  @Override
+  public List<KeyWrapper> getKeys(String modelKey, PublicKeyLoader loader) {
+    PublicKeysWrapper currentKeys = getKey(modelKey, loader);
+
+    return currentKeys == null
+        ? Collections.emptyList()
+        : currentKeys.getKeys().stream().map(KeyWrapper::cloneKey).collect(Collectors.toList());
+  }
+
+  private PublicKeysWrapper getKey(String modelKey, PublicKeyLoader loader) {
     WrapperCallable wrapperCallable = new WrapperCallable(modelKey, loader);
     FutureTask<PublicKeysWrapper> task = new FutureTask<>(wrapperCallable);
     FutureTask<PublicKeysWrapper> existing = tasksInProgress.putIfAbsent(modelKey, task);
@@ -64,13 +113,7 @@ public class MapPublicKeyStorageProvider implements PublicKeyStorageProvider {
     }
 
     try {
-      currentKeys = task.get();
-
-      // Computation finished. Let's see if key is available
-      KeyWrapper publicKey = currentKeys.getKeyByKidAndAlg(kid, algorithm);
-      if (publicKey != null) {
-        return publicKey;
-      }
+      return task.get();
 
     } catch (ExecutionException ee) {
       throw new RuntimeException("Error when loading public keys: " + ee.getMessage(), ee);
@@ -82,14 +125,6 @@ public class MapPublicKeyStorageProvider implements PublicKeyStorageProvider {
         tasksInProgress.remove(modelKey);
       }
     }
-
-    List<String> availableKids =
-        currentKeys == null ? Collections.emptyList() : currentKeys.getKids();
-    log.warnf(
-        "PublicKey wasn't found in the storage. Requested kid: '%s' . Available kids: '%s'",
-        kid, availableKids);
-
-    return null;
   }
 
   private class WrapperCallable implements Callable<PublicKeysWrapper> {

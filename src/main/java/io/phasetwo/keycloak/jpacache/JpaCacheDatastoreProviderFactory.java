@@ -1,19 +1,20 @@
 package io.phasetwo.keycloak.jpacache;
 
-import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
+import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
-import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
 
 import com.google.auto.service.AutoService;
+import io.phasetwo.keycloak.common.IsSupported;
 import lombok.extern.jbosslog.JBossLog;
 import org.keycloak.models.*;
 import org.keycloak.storage.DatastoreProvider;
 import org.keycloak.storage.DatastoreProviderFactory;
-import org.keycloak.storage.datastore.LegacyDatastoreProviderFactory;
+import org.keycloak.storage.datastore.DefaultDatastoreProviderFactory;
 
-@JBossLog
 @AutoService(DatastoreProviderFactory.class)
-public class JpaCacheDatastoreProviderFactory extends LegacyDatastoreProviderFactory {
+@JBossLog
+public class JpaCacheDatastoreProviderFactory extends DefaultDatastoreProviderFactory
+    implements IsSupported {
   private static final String PROVIDER_ID =
       "legacy"; // Override legacy provider to disable timers / event listeners and stuff...
 
@@ -24,7 +25,7 @@ public class JpaCacheDatastoreProviderFactory extends LegacyDatastoreProviderFac
 
   @Override
   public DatastoreProvider create(KeycloakSession session) {
-    log.tracef("Creating JpaCacheDatastoreProvider...");
+    log.infof("Creating JpaCacheDatastoreProvider...");
     return createProviderCached(
         session, DatastoreProvider.class, () -> new JpaCacheDatastoreProvider(this, session));
   }
@@ -32,10 +33,5 @@ public class JpaCacheDatastoreProviderFactory extends LegacyDatastoreProviderFac
   @Override
   public int order() {
     return PROVIDER_PRIORITY + 1;
-  }
-
-  @Override
-  public boolean isSupported() {
-    return isJpaCacheEnabled();
   }
 }

@@ -1,7 +1,7 @@
 package io.phasetwo.keycloak.jpacache.loginFailure;
 
+import io.phasetwo.keycloak.common.TimeAdapter;
 import io.phasetwo.keycloak.jpacache.loginFailure.persistence.entities.LoginFailure;
-import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import org.keycloak.models.RealmModel;
@@ -54,6 +54,7 @@ public class JpaCacheLoginFailureAdapter implements UserLoginFailureModel {
     entity.setNumFailures(null);
     entity.setLastFailure(null);
     entity.setLastIpFailure(null);
+    entity.setNumTemporaryLockouts(null);
   }
 
   @Override
@@ -75,5 +76,16 @@ public class JpaCacheLoginFailureAdapter implements UserLoginFailureModel {
   @Override
   public void setLastIPFailure(String ip) {
     entity.setLastIpFailure(ip);
+  }
+
+  @Override
+  public void incrementTemporaryLockouts() {
+    entity.setNumTemporaryLockouts(getNumTemporaryLockouts() + 1);
+  }
+
+  @Override
+  public int getNumTemporaryLockouts() {
+    Integer numTemporaryLockouts = entity.getNumTemporaryLockouts();
+    return numTemporaryLockouts == null ? 0 : numTemporaryLockouts;
   }
 }

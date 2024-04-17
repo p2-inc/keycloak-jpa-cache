@@ -41,12 +41,9 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <main.java.package>io.phasetwo.keycloak.jpacache</main.java.package>
     <junit.version>5.8.2</junit.version>
-    <keycloak.version>22.0.5</keycloak.version>
-    <resteasy.version>6.2.4.Final</resteasy.version>
+    <keycloak.version>24.0.2</keycloak.version>
     <lombok.version>1.18.30</lombok.version>
     <auto-service.version>1.1.1</auto-service.version>
-    <jackson.version>2.15.2</jackson.version>
-    <jackson.databind.version>2.15.2</jackson.databind.version>
     <testcontainers-keycloak.version>1.17.6</testcontainers-keycloak.version>
     <ossrh.url>https://s01.oss.sonatype.org</ossrh.url>
     <maven.compiler.source>${java.version}</maven.compiler.source>
@@ -233,7 +230,7 @@
     </dependency>
     <dependency>
       <groupId>org.keycloak</groupId>
-      <artifactId>keycloak-model-legacy</artifactId>
+      <artifactId>keycloak-model-storage</artifactId>
       <version>${keycloak.version}</version>
     </dependency>
     <dependency>
@@ -248,7 +245,7 @@
     </dependency>
     <dependency>
       <groupId>org.keycloak</groupId>
-      <artifactId>keycloak-model-legacy-private</artifactId>
+      <artifactId>keycloak-model-storage-private</artifactId>
       <version>${keycloak.version}</version>
     </dependency>
     <dependency>
@@ -261,12 +258,12 @@
       <artifactId>keycloak-common</artifactId>
       <version>${keycloak.version}</version>
     </dependency>
-    <dependency> <!-- if you're getting a missing dependency error here, you need to install keycloak from source locally, as this never hits maven central -->
+    <dependency>
       <groupId>org.keycloak</groupId>
-      <artifactId>keycloak-testsuite-utils</artifactId>
+      <artifactId>keycloak-core</artifactId>
       <version>${keycloak.version}</version>
-      <scope>test</scope>
     </dependency>
+
     
     <!-- javax/jakarta apis -->
     <dependency>
@@ -277,6 +274,18 @@
     </dependency>
 
     <!-- testing -->
+    <dependency>
+      <groupId>org.keycloak</groupId>
+      <artifactId>keycloak-quarkus-server</artifactId>
+      <version>${keycloak.version}</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.keycloak</groupId>
+          <artifactId>keycloak-crypto-fips1402</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>

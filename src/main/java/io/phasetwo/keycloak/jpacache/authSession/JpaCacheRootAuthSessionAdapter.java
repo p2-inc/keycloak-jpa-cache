@@ -2,9 +2,9 @@ package io.phasetwo.keycloak.jpacache.authSession;
 
 import static org.keycloak.models.utils.SessionExpiration.getAuthSessionLifespan;
 
+import io.phasetwo.keycloak.common.TimeAdapter;
 import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.AuthenticationSession;
 import io.phasetwo.keycloak.jpacache.authSession.persistence.entities.RootAuthenticationSession;
-import io.phasetwo.keycloak.mapstorage.common.TimeAdapter;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.util.*;
@@ -99,8 +99,8 @@ public class JpaCacheRootAuthSessionAdapter implements RootAuthenticationSession
     List<AuthenticationSession> authSessions = query.getResultList();
     if (authSessions != null && authSessions.size() > 0) {
       log.tracef(
-          "Found %d authSessions for tabId=%s clientId=%s, in rootSession %s", authSessions.size(),
-          tabId, client.getClientId(), rootAuthenticationSession);
+          "Found %d authSessions for tabId=%s clientId=%s, in rootSession %s",
+          authSessions.size(), tabId, client.getClientId(), rootAuthenticationSession);
       return entityToAdapterFunc(realm).apply(authSessions.get(0));
     } else {
       log.tracef(

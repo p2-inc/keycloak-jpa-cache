@@ -1,0 +1,15 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.5.xsd">
+
+  <changeSet id="add-temp-lockouts-login-failure" author="xgp">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <columnExists tableName="CACHE_LOGIN_FAILURE" columnName="NUM_TEMPORARY_LOCKOUTS" />
+      </not>
+    </preConditions>
+    <addColumn tableName="CACHE_LOGIN_FAILURE">
+      <column name="NUM_TEMPORARY_LOCKOUTS" type="INT" />
+   </addColumn>
+  </changeSet>
+
+</databaseChangeLog>

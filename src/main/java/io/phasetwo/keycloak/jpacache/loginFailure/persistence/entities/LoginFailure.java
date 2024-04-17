@@ -42,4 +42,7 @@ public class LoginFailure {
 
   @Column(name = "LAST_IP_FAILURE")
   private String lastIpFailure;
+
+  @Column(name = "NUM_TEMPORARY_LOCKOUTS")
+  private Integer numTemporaryLockouts;
 }

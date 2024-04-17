@@ -4,7 +4,7 @@
 
 Uses JPA instead of [Infinispan](https://infinispan.org/) for remote cache entities. Overrides the [`LegacyDatastoreProvider`](https://www.keycloak.org/docs-api/23.0.4/javadocs/org/keycloak/storage/datastore/LegacyDatastoreProvider.html).
 
-Requires [Keycloak](https://keycloak.org) >= 23.0.4.
+Requires [Keycloak](https://keycloak.org) >= `24`.
 
 Heavily inspired by [keycloak-cassandra-extension](https://github.com/opdt/keycloak-cassandra-extension). Enormous thanks to these amazing engineers.
 
@@ -45,6 +45,8 @@ TBD. You can currently try after building with the included `docker-compose.yml`
 - Keycloak Authorization must be disabled (this is essential as otherwise Keycloak tries to use `InfinispanStoreFactory` in a lot of places).
 - Some tests are still skipped or failing. We need to understand if this is because the test fails to do everything in a single transaction (Keycloak doesn't do this internally) or if there is something we are missing.
 - Hasn't been benchmarked to look for issues under load.
+- Need to see if there are "L1 cache" ways to reduce load on the database, specifically in the context of a single transaction, or if JPA takes care of most of that.
+- You should probably enable sticky sessions on your load balancer, although we need to substantiate this with testing.
 
 -----
 

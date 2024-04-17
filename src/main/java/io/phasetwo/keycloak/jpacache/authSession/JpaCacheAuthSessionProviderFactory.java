@@ -1,21 +1,20 @@
 package io.phasetwo.keycloak.jpacache.authSession;
 
-import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
-import static org.keycloak.userprofile.DeclarativeUserProfileProvider.PROVIDER_PRIORITY;
+import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 
 import com.google.auto.service.AutoService;
+import io.phasetwo.keycloak.common.IsSupported;
 import jakarta.persistence.EntityManager;
 import org.keycloak.Config;
 import org.keycloak.connections.jpa.JpaConnectionProvider;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.provider.EnvironmentDependentProviderFactory;
 import org.keycloak.sessions.AuthenticationSessionProviderFactory;
 
+@SuppressWarnings("rawtypes")
 @AutoService(AuthenticationSessionProviderFactory.class)
 public class JpaCacheAuthSessionProviderFactory
-    implements AuthenticationSessionProviderFactory<JpaCacheAuthSessionProvider>,
-        EnvironmentDependentProviderFactory {
+    implements AuthenticationSessionProviderFactory<JpaCacheAuthSessionProvider>, IsSupported {
   public static final String AUTH_SESSIONS_LIMIT = "authSessionsLimit";
 
   public static final int DEFAULT_AUTH_SESSIONS_LIMIT = 300;
@@ -49,10 +48,5 @@ public class JpaCacheAuthSessionProviderFactory
   @Override
   public int order() {
     return PROVIDER_PRIORITY + 1;
-  }
-
-  @Override
-  public boolean isSupported() {
-    return isJpaCacheEnabled();
   }
 }
