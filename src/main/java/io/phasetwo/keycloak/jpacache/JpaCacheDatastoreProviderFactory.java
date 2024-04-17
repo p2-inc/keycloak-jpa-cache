@@ -25,7 +25,7 @@ public class JpaCacheDatastoreProviderFactory extends DefaultDatastoreProviderFa
 
   @Override
   public DatastoreProvider create(KeycloakSession session) {
-    log.infof("Creating JpaCacheDatastoreProvider...");
+    log.trace("Creating JpaCacheDatastoreProvider...");
     return createProviderCached(
         session, DatastoreProvider.class, () -> new JpaCacheDatastoreProvider(this, session));
   }
