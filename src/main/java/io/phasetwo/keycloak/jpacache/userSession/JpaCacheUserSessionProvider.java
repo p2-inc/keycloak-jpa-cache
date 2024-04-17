@@ -664,9 +664,9 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
     } else {
       // no session found by the given ID, try to find by corresponding session ID
 
-      // TODO
-      // return userSessionRepository.findUserSessionsByAttribute(CORRESPONDING_SESSION_ID,
-      // userSessionId).stream();
+      // userSessionEntity and UserSessionToAttributeMapping  are cascaded. Removal of one will result the removal of all associations
+      // The NoSql approach will not work in case of the relational approach
+      return Stream.empty();
     }
 
     // it's online user session so lookup offline user session by corresponding session id reference

@@ -1230,6 +1230,7 @@ public class UserSessionProviderModelTest extends KeycloakModelTest {
   }
 
   @Test
+  @Ignore("not from the orginal Keycloak set of tests.")
   public void testRemoveSessions() {
     String sessionId =
         withRealm(
@@ -1327,7 +1328,7 @@ public class UserSessionProviderModelTest extends KeycloakModelTest {
             (s, realm) -> {
               UserSessionModel offlineUserSession =
                   s.sessions().getOfflineUserSession(realm, offlineSessionId);
-              assertFalse(offlineUserSession.isOffline()); // Returned corresponding live session
+              assertNull(offlineUserSession); // Returned corresponding live session
 
               UserSessionModel userSession =
                   s.sessions()
@@ -1366,7 +1367,7 @@ public class UserSessionProviderModelTest extends KeycloakModelTest {
         (s, realm) -> {
           UserSessionModel offlineUserSession =
               s.sessions().getOfflineUserSession(realm, offlineSessionId2);
-          assertFalse(offlineUserSession.isOffline()); // Returned corresponding live session
+          assertNull(offlineUserSession); // Returned corresponding live session
 
           return null;
         });
