@@ -17,11 +17,11 @@
 
 package io.phasetwo.keycloak.compatibility;
 
-import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
 import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
 
 import com.google.auto.service.AutoService;
+import io.phasetwo.keycloak.common.IsSupported;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.FutureTask;
@@ -30,13 +30,11 @@ import org.keycloak.crypto.PublicKeysWrapper;
 import org.keycloak.keys.PublicKeyStorageProviderFactory;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.provider.EnvironmentDependentProviderFactory;
 
 @SuppressWarnings("rawtypes")
 @AutoService(PublicKeyStorageProviderFactory.class)
 public class MapPublicKeyStorageProviderFactory
-    implements PublicKeyStorageProviderFactory<MapPublicKeyStorageProvider>,
-        EnvironmentDependentProviderFactory {
+    implements PublicKeyStorageProviderFactory<MapPublicKeyStorageProvider>, IsSupported {
 
   private final Map<String, FutureTask<PublicKeysWrapper>> tasksInProgress =
       new ConcurrentHashMap<>();
@@ -66,10 +64,5 @@ public class MapPublicKeyStorageProviderFactory
   @Override
   public int order() {
     return PROVIDER_PRIORITY + 1;
-  }
-
-  @Override
-  public boolean isSupported(Config.Scope config) {
-    return isJpaCacheEnabled();
   }
 }

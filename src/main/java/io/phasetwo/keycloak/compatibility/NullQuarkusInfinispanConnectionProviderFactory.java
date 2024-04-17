@@ -16,11 +16,11 @@
 
 package io.phasetwo.keycloak.compatibility;
 
-import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
 import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
 
 import com.google.auto.service.AutoService;
+import io.phasetwo.keycloak.common.IsSupported;
 import lombok.extern.jbosslog.JBossLog;
 import org.infinispan.Cache;
 import org.infinispan.client.hotrod.RemoteCache;
@@ -30,16 +30,11 @@ import org.keycloak.connections.infinispan.InfinispanConnectionProviderFactory;
 import org.keycloak.connections.infinispan.TopologyInfo;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.provider.EnvironmentDependentProviderFactory;
 
 @JBossLog
 @AutoService(InfinispanConnectionProviderFactory.class)
 public class NullQuarkusInfinispanConnectionProviderFactory
-    implements InfinispanConnectionProviderFactory, EnvironmentDependentProviderFactory {
-  @Override
-  public boolean isSupported(Config.Scope config) {
-    return isJpaCacheEnabled();
-  }
+    implements InfinispanConnectionProviderFactory, IsSupported {
 
   @Override
   public InfinispanConnectionProvider create(KeycloakSession session) {

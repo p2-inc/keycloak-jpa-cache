@@ -1,6 +1,7 @@
 package io.phasetwo.keycloak.jpacache.testsuite.parameters;
 
 import com.google.common.collect.ImmutableSet;
+import io.phasetwo.keycloak.compatibility.MapPublicKeyStorageProviderFactory;
 import io.phasetwo.keycloak.jpacache.*;
 import io.phasetwo.keycloak.jpacache.authSession.JpaCacheAuthSessionProviderFactory;
 import io.phasetwo.keycloak.jpacache.loginFailure.JpaCacheLoginFailureProviderFactory;
@@ -8,7 +9,6 @@ import io.phasetwo.keycloak.jpacache.singleUseObject.JpaCacheSingleUseObjectProv
 import io.phasetwo.keycloak.jpacache.testsuite.Config;
 import io.phasetwo.keycloak.jpacache.testsuite.KeycloakModelParameters;
 import io.phasetwo.keycloak.jpacache.userSession.JpaCacheUserSessionProviderFactory;
-import io.phasetwo.keycloak.compatibility.MapPublicKeyStorageProviderFactory;
 import java.util.Set;
 import org.keycloak.authorization.jpa.store.JPAAuthorizationStoreFactory;
 import org.keycloak.broker.provider.IdentityProviderFactory;

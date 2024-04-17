@@ -16,11 +16,11 @@
 
 package io.phasetwo.keycloak.compatibility;
 
-import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
 import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
 
 import com.google.auto.service.AutoService;
+import io.phasetwo.keycloak.common.IsSupported;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -35,13 +35,11 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.cache.authorization.CachedStoreFactoryProvider;
 import org.keycloak.models.cache.authorization.CachedStoreProviderFactory;
-import org.keycloak.provider.EnvironmentDependentProviderFactory;
 import org.keycloak.representations.idm.authorization.AbstractPolicyRepresentation;
 
 @JBossLog
 @AutoService(CachedStoreProviderFactory.class)
-public class NullCachedStoreProviderFactory
-    implements CachedStoreProviderFactory, EnvironmentDependentProviderFactory {
+public class NullCachedStoreProviderFactory implements CachedStoreProviderFactory, IsSupported {
   @Override
   public CachedStoreFactoryProvider create(KeycloakSession session) {
     return createProviderCached(
@@ -353,10 +351,5 @@ public class NullCachedStoreProviderFactory
   @Override
   public String getId() {
     return "default";
-  }
-
-  @Override
-  public boolean isSupported(Config.Scope config) {
-    return isJpaCacheEnabled();
   }
 }

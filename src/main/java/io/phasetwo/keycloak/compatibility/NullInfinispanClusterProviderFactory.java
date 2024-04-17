@@ -16,11 +16,11 @@
 
 package io.phasetwo.keycloak.compatibility;
 
-import static io.phasetwo.keycloak.common.CommunityProfiles.isJpaCacheEnabled;
 import static io.phasetwo.keycloak.common.Constants.PROVIDER_PRIORITY;
 import static io.phasetwo.keycloak.common.ProviderHelpers.createProviderCached;
 
 import com.google.auto.service.AutoService;
+import io.phasetwo.keycloak.common.IsSupported;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import lombok.extern.jbosslog.JBossLog;
@@ -28,16 +28,10 @@ import org.keycloak.Config;
 import org.keycloak.cluster.*;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
-import org.keycloak.provider.EnvironmentDependentProviderFactory;
 
 @JBossLog
 @AutoService(ClusterProviderFactory.class)
-public class NullInfinispanClusterProviderFactory
-    implements ClusterProviderFactory, EnvironmentDependentProviderFactory {
-  @Override
-  public boolean isSupported(Config.Scope config) {
-    return isJpaCacheEnabled();
-  }
+public class NullInfinispanClusterProviderFactory implements ClusterProviderFactory, IsSupported {
 
   @Override
   public ClusterProvider create(KeycloakSession session) {
