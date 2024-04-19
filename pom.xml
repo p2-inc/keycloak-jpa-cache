@@ -67,6 +67,7 @@
     <jdbc.mvn.artifactId>h2</jdbc.mvn.artifactId>
     <jdbc.mvn.version>2.2.224</jdbc.mvn.version>
     <jacoco.skip>true</jacoco.skip>
+    <smallrye.jandex.version>3.0.5</smallrye.jandex.version>
     <keycloak.userSessions.infinispan.preloadOfflineSessionsFromDatabase>false</keycloak.userSessions.infinispan.preloadOfflineSessionsFromDatabase>
   </properties>
 
@@ -271,6 +272,11 @@
       <artifactId>jakarta.persistence-api</artifactId>
       <version>3.1.0</version>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.smallrye</groupId>
+      <artifactId>jandex</artifactId>
+      <version>${smallrye.jandex.version}</version>
     </dependency>
 
     <!-- testing -->
