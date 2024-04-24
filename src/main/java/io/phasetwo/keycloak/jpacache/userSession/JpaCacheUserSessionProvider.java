@@ -239,7 +239,10 @@ public class JpaCacheUserSessionProvider implements UserSessionProvider {
         entityManager.createNamedQuery("findUserSessionsByUserId2", UserSession.class);
     query.setParameter("realmId", realm.getId());
     query.setParameter("userId", user.getId());
-    return query.getResultStream().map(entityToAdapterFunc((realm)));
+    query.setParameter("now", Time.currentTimeMillis());
+
+    return query.getResultStream()
+            .map(entityToAdapterFunc((realm)));
   }
 
   @Override
