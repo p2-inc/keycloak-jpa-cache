@@ -40,7 +40,7 @@ import org.keycloak.models.UserSessionModel;
 @NamedQueries({
   @NamedQuery(
       name = "findUserSessionsByUserId2",
-      query = "SELECT s FROM UserSession s WHERE s.realmId = :realmId AND s.userId = :userId"),
+      query = "SELECT s FROM UserSession s WHERE s.realmId = :realmId AND s.userId = :userId AND s.expiration > :now"),
   @NamedQuery(
       name = "findUserSessionsByBrokerSessionId",
       query =
