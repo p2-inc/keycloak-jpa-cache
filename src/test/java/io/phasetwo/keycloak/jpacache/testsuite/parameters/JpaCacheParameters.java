@@ -24,6 +24,7 @@ import org.keycloak.credential.OTPCredentialProviderFactory;
 import org.keycloak.credential.PasswordCredentialProviderFactory;
 import org.keycloak.credential.hash.PasswordHashSpi;
 import org.keycloak.credential.hash.Pbkdf2Sha256PasswordHashProviderFactory;
+import org.keycloak.credential.hash.Pbkdf2Sha512PasswordHashProviderFactory;
 import org.keycloak.device.DeviceRepresentationProviderFactoryImpl;
 import org.keycloak.device.DeviceRepresentationSpi;
 import org.keycloak.events.jpa.JpaEventStoreProviderFactory;
@@ -49,6 +50,27 @@ import org.keycloak.services.clientregistration.policy.impl.*;
 import org.keycloak.sessions.AuthenticationSessionSpi;
 import org.keycloak.storage.DatastoreSpi;
 import org.keycloak.storage.datastore.DefaultDatastoreProviderFactory;
+import org.keycloak.userprofile.DeclarativeUserProfileProviderFactory;
+import org.keycloak.userprofile.UserProfileSpi;
+import org.keycloak.userprofile.validator.AttributeRequiredByMetadataValidator;
+import org.keycloak.userprofile.validator.BlankAttributeValidator;
+import org.keycloak.userprofile.validator.BrokeringFederatedUsernameHasValueValidator;
+import org.keycloak.userprofile.validator.DuplicateEmailValidator;
+import org.keycloak.userprofile.validator.DuplicateUsernameValidator;
+import org.keycloak.userprofile.validator.EmailExistsAsUsernameValidator;
+import org.keycloak.userprofile.validator.ImmutableAttributeValidator;
+import org.keycloak.userprofile.validator.MultiValueValidator;
+import org.keycloak.userprofile.validator.PersonNameProhibitedCharactersValidator;
+import org.keycloak.userprofile.validator.ReadOnlyAttributeUnchangedValidator;
+import org.keycloak.userprofile.validator.RegistrationEmailAsUsernameEmailValueValidator;
+import org.keycloak.userprofile.validator.RegistrationEmailAsUsernameUsernameValueValidator;
+import org.keycloak.userprofile.validator.RegistrationUsernameExistsValidator;
+import org.keycloak.userprofile.validator.UsernameHasValueValidator;
+import org.keycloak.userprofile.validator.UsernameIDNHomographValidator;
+import org.keycloak.userprofile.validator.UsernameMutationValidator;
+import org.keycloak.userprofile.validator.UsernameProhibitedCharactersValidator;
+import org.keycloak.validate.ValidatorFactory;
+import org.keycloak.validate.ValidatorSPI;
 
 public class JpaCacheParameters extends KeycloakModelParameters {
 
@@ -75,6 +97,8 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(PublicKeyStorageSpi.class)
           .add(SingleUseObjectSpi.class)
           .add(UserSessionPersisterSpi.class)
+          .add(UserProfileSpi.class)
+          .add(ValidatorSPI.class)
           .build();
 
   static final Set<Class<? extends ProviderFactory>> ALLOWED_FACTORIES =
@@ -125,9 +149,12 @@ public class JpaCacheParameters extends KeycloakModelParameters {
           .add(OTPCredentialProviderFactory.class)
           .add(PasswordCredentialProviderFactory.class)
           .add(Pbkdf2Sha256PasswordHashProviderFactory.class)
+          .add(Pbkdf2Sha512PasswordHashProviderFactory.class)
           .add(ProtocolMappersClientRegistrationPolicyFactory.class)
           .add(ScopeClientRegistrationPolicyFactory.class)
           .add(TrustedHostClientRegistrationPolicyFactory.class)
+          .add(DeclarativeUserProfileProviderFactory.class)
+          .add(ValidatorFactory.class)
           .build();
 
   public JpaCacheParameters() {
@@ -151,7 +178,28 @@ public class JpaCacheParameters extends KeycloakModelParameters {
         .spi("deploymentState")
         .defaultProvider("jpa")
         .spi("dblock")
-        .defaultProvider("jpa");
+        .defaultProvider("jpa")
+        .provider(Pbkdf2Sha512PasswordHashProviderFactory.ID)
+        .spi(UserProfileSpi.ID)
+        .defaultProvider(DeclarativeUserProfileProviderFactory.ID)
+        .spi("validator")
+        .provider(BlankAttributeValidator.ID)
+        .provider(AttributeRequiredByMetadataValidator.ID)
+        .provider(ReadOnlyAttributeUnchangedValidator.ID)
+        .provider(DuplicateUsernameValidator.ID)
+        .provider(UsernameHasValueValidator.ID)
+        .provider(UsernameIDNHomographValidator.ID)
+        .provider(UsernameMutationValidator.ID)
+        .provider(DuplicateEmailValidator.ID)
+        .provider(EmailExistsAsUsernameValidator.ID)
+        .provider(RegistrationEmailAsUsernameUsernameValueValidator.ID)
+        .provider(RegistrationUsernameExistsValidator.ID)
+        .provider(RegistrationEmailAsUsernameEmailValueValidator.ID)
+        .provider(BrokeringFederatedUsernameHasValueValidator.ID)
+        .provider(ImmutableAttributeValidator.ID)
+        .provider(UsernameProhibitedCharactersValidator.ID)
+        .provider(PersonNameProhibitedCharactersValidator.ID)
+        .provider(MultiValueValidator.ID);
 
     cf.spi("datastore")
         .defaultProvider("legacy")
