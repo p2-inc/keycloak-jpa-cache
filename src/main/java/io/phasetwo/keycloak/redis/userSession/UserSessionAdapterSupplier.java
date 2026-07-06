@@ -28,11 +28,12 @@ public class UserSessionAdapterSupplier
 
   @Override
   public RedisUserSessionAdapter newInstance(UserSessionKey key) {
-    return new RedisUserSessionAdapter(session, jedis, clientSessionTrx, key.id());
+    return new RedisUserSessionAdapter(session, jedis, clientSessionTrx, key.realmId(), key.id());
   }
 
   @Override
   public RedisUserSessionAdapter newInstance(UserSessionKey key, Map<String, String> data) {
-    return new RedisUserSessionAdapter(session, jedis, clientSessionTrx, key.id(), data);
+    return new RedisUserSessionAdapter(
+        session, jedis, clientSessionTrx, key.realmId(), key.id(), data);
   }
 }

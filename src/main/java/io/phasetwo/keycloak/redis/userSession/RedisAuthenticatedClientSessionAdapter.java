@@ -4,6 +4,7 @@ import static io.phasetwo.keycloak.redis.userSession.expiration.RedisSessionExpi
 
 import com.google.common.collect.ImmutableMap;
 import io.phasetwo.keycloak.common.ExpirableEntity;
+import io.phasetwo.keycloak.redis.KeyFormat;
 import io.phasetwo.keycloak.redis.MapEntity;
 import io.phasetwo.keycloak.redis.userSession.expiration.SessionExpirationData;
 import java.util.Collections;
@@ -26,22 +27,28 @@ public class RedisAuthenticatedClientSessionAdapter extends MapEntity<Authentica
 
   private static final String REFRESH_TOKEN_LAST_USE_PREFIX = "refreshTokenLastUsePrefix";
 
-  public RedisAuthenticatedClientSessionAdapter(KeycloakSession session, String id) {
-    this(session, id, null);
+  public RedisAuthenticatedClientSessionAdapter(
+      KeycloakSession session, String realmId, String id) {
+    this(session, realmId, id, null);
   }
 
   public RedisAuthenticatedClientSessionAdapter(
-      KeycloakSession session, String id, Map<String, String> existingData) {
-    super(new AuthenticatedClientSessionKey(id), existingData);
+      KeycloakSession session, String realmId, String id, Map<String, String> existingData) {
+    super(new AuthenticatedClientSessionKey(realmId, id), existingData);
     this.session = session;
-    setField("id", id);
+    setFieldFromKey("id", id);
+    setFieldFromKey("realmId", realmId);
   }
 
   @Override
   public Map<String, String> getSecondaryIndexes() {
     ImmutableMap.Builder<String, String> b = ImmutableMap.builder();
-    siPut(b, "authenticated-client:parent-index:%s", getParentId(), getKey().key());
-    siPut(b, "authenticated-client:client-index:%s", getClientUuid(), getKey().key());
+    if (getRealmId() != null) {
+      siPutIf(b, getParentId(),
+        KeyFormat.clientSessionParentIndex(getRealmId(), getParentId()), getKey().key());
+      siPutIf(b, getClientUuid(),
+        KeyFormat.clientSessionClientIndex(getRealmId(), getClientUuid()), getKey().key());
+    }
     return b.build();
   }
 

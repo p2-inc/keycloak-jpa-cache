@@ -3,6 +3,7 @@ package io.phasetwo.keycloak.redis.authSession;
 import static org.keycloak.common.util.StackUtil.getShortStackTrace;
 import static org.keycloak.models.utils.SessionExpiration.getAuthSessionLifespan;
 
+import io.phasetwo.keycloak.redis.KeyFormat;
 import io.phasetwo.keycloak.redis.RedisChangelogTransaction;
 import io.phasetwo.keycloak.redis.connection.RedisMode;
 import java.util.Map;
@@ -154,7 +155,15 @@ public class RedisAuthenticationSessionProvider implements AuthenticationSession
 
     log.tracef("updateNonlocalSessionAuthNotes(%s)%s", compoundId, getShortStackTrace());
 
-    String indexKey = String.format("auth-session:parent:%s", compoundId.getRootSessionId());
+    // Deprecated cross-node path (no cluster in the serverless model); the
+    // parent index is realm-scoped, so resolve the realm from context.
+    RealmModel contextRealm = session.getContext().getRealm();
+    if (contextRealm == null) {
+      log.warn("updateNonlocalSessionAuthNotes without a context realm — skipping");
+      return;
+    }
+    String indexKey =
+        KeyFormat.authSessionParentIndex(contextRealm.getId(), compoundId.getRootSessionId());
     log.debugf("[redis] SMEMBERS %s", indexKey);
     Set<String> strIds = jedis.smembers(indexKey);
     if (strIds != null && !strIds.isEmpty()) {

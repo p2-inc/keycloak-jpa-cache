@@ -7,6 +7,7 @@ import static org.keycloak.models.UserSessionModel.SessionPersistenceState.TRANS
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import io.phasetwo.keycloak.redis.KeyFormat;
 import io.phasetwo.keycloak.redis.RedisChangelogTransaction;
 import io.phasetwo.keycloak.redis.connection.RedisMode;
 import io.phasetwo.keycloak.redis.userSession.expiration.SessionExpirationData;
@@ -31,8 +32,9 @@ public class RedisUserSessionProvider implements UserSessionProvider {
   private final KeycloakSession session;
   private final UnifiedJedis jedis;
 
-  private final RedisChangelogTransaction<UserSessionKey, RedisUserSessionAdapter> userSessionTrx;
-  private final RedisChangelogTransaction<
+  protected final RedisChangelogTransaction<UserSessionKey, RedisUserSessionAdapter>
+      userSessionTrx;
+  protected final RedisChangelogTransaction<
           AuthenticatedClientSessionKey, RedisAuthenticatedClientSessionAdapter>
       clientSessionTrx;
 
@@ -114,8 +116,9 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     if (userSession instanceof RedisUserSessionAdapter) {
       return (RedisUserSessionAdapter) userSession;
     }
-    // KC may wrap the adapter (e.g. UserSessionUtil$1 during token-exchange:v2)
-    return getUserSessionById(userSession.getId());
+    // KC may wrap the adapter (e.g. UserSessionUtil$1 during token-exchange:v2). The realm is
+    // required to build the (serverless key-format aware) lookup key.
+    return getUserSessionById(userSession.getRealm(), userSession.getId());
   }
 
   /**
@@ -131,7 +134,9 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     } else {
       authenticatedClientSessionEntity =
           clientSessionTrx.get(
-              new AuthenticatedClientSessionKey(authenticatedClientSession.getId()));
+              new AuthenticatedClientSessionKey(
+                  authenticatedClientSession.getRealm().getId(),
+                  authenticatedClientSession.getId()));
     }
     return authenticatedClientSessionEntity;
   }
@@ -245,7 +250,7 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     }
 
     // https://github.com/keycloak/keycloak/blob/archive/map-store/model/map/src/main/java/org/keycloak/models/map/userSession/MapUserSessionProvider.java#L193-L199
-    a = userSessionTrx.getIfPresent(new UserSessionKey(id));
+    a = userSessionTrx.getIfPresent(new UserSessionKey(realm.getId(), id));
     if (a != null && Objects.equals(a.getRealmId(), realm.getId()) && !a.isOffline()) {
       log.tracef("found userSession at %s %s", id, a);
       return a;
@@ -262,30 +267,37 @@ public class RedisUserSessionProvider implements UserSessionProvider {
   private Stream<RedisUserSessionAdapter> getUserSessionsStreamByIndexKey(
       String[] indexKeys, RealmModel realm, boolean offline) {
     log.tracef("[redis] SMEMBERS %s", indexKeys);
+    // Cluster-safe pipeline type (AbstractPipeline, upstream #77) + per-index-key response map so
+    // dangling index members can be reaped on commit (serverless index hygiene, audit §4.7).
     try (AbstractPipeline pipeline = jedis.pipelined()) {
-      List<Response<Set<String>>> responses = Lists.newArrayList();
+      Map<String, Response<Set<String>>> responses = new LinkedHashMap<>();
 
       for (String indexKey : indexKeys) {
-        responses.add(pipeline.smembers(indexKey));
+        responses.put(indexKey, pipeline.smembers(indexKey));
       }
 
       pipeline.sync(); // This executes the batch
 
-      Set<String> strIds =
-          responses.stream()
-              .map(Response::get)
-              .filter(Objects::nonNull)
-              .flatMap(Set::stream)
-              .collect(Collectors.toSet());
-
-      if (!strIds.isEmpty()) {
-        return strIds.stream()
-            .map(UserSessionKey::fromString)
-            .map(userSessionTrx::getIfPresent)
-            .filter(Objects::nonNull)
-            .filter(s -> s.getRealmId().equals(realm.getId()))
-            .filter(s -> offline == s.isOffline());
+      List<RedisUserSessionAdapter> out = Lists.newArrayList();
+      for (Map.Entry<String, Response<Set<String>>> entry : responses.entrySet()) {
+        Set<String> members = entry.getValue().get();
+        if (members == null) continue;
+        for (String member : members) {
+          RedisUserSessionAdapter s =
+              userSessionTrx.getIfPresent(UserSessionKey.fromString(member));
+          if (s == null) {
+            // audit §4.7 index hygiene: the value key expired/vanished — skip
+            // it now, reap at transaction commit (no Redis writes outside
+            // commitImpl).
+            userSessionTrx.reapIndexMemberOnCommit(entry.getKey(), member);
+            continue;
+          }
+          if (s.getRealmId().equals(realm.getId()) && offline == s.isOffline()) {
+            out.add(s);
+          }
+        }
       }
+      return out.stream();
     } catch (Exception e) {
       log.error("Pipeline failed", e);
     }
@@ -298,7 +310,7 @@ public class RedisUserSessionProvider implements UserSessionProvider {
   public Stream<UserSessionModel> getUserSessionsStream(RealmModel realm, UserModel user) {
     log.tracef("getUserSessionsStream(%s, %s)%s", realm, user, getShortStackTrace());
 
-    String indexKey = String.format("user-session:user-index:%s", user.getId());
+    String indexKey = KeyFormat.userSessionUserIndex(realm.getId(), user.getId());
     return getUserSessionsStreamByIndexKey(indexKey, realm, false).map(s -> (UserSessionModel) s);
   }
 
@@ -307,22 +319,10 @@ public class RedisUserSessionProvider implements UserSessionProvider {
   public Stream<UserSessionModel> getUserSessionsStream(RealmModel realm, ClientModel client) {
     log.tracef("getUserSessionsStream(%s, %s)%s", realm, client, getShortStackTrace());
 
-    String indexKey = String.format("authenticated-client:client-index:%s", client.getId());
-    log.tracef("[redis] SMEMBERS %s", indexKey);
-    Set<String> strIds = Sets.newTreeSet(jedis.smembers(indexKey)); // for consistent sorting
-    if (!strIds.isEmpty()) {
-      return strIds.stream()
-          .map(AuthenticatedClientSessionKey::fromString)
-          .map(clientSessionTrx::getIfPresent)
-          .filter(Objects::nonNull)
-          .filter(c -> c.getRealmId().equals(realm.getId()))
-          .filter(c -> c.getClientUuid().equals(client.getId()))
-          .map(RedisAuthenticatedClientSessionAdapter::getUserSession)
-          .filter(Objects::nonNull)
-          .filter(us -> !us.isOffline());
-    } else {
-      return Stream.empty();
-    }
+    return clientSessionsByIndex(realm, client)
+        .map(RedisAuthenticatedClientSessionAdapter::getUserSession)
+        .filter(Objects::nonNull)
+        .filter(us -> !us.isOffline());
   }
 
   // xx
@@ -348,7 +348,7 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     List<RedisUserSessionAdapter> as = brokerUserIdSessions.getList(brokerUserId);
     if (as == null) as = Lists.newArrayList();
     // from the store
-    String indexKey = String.format("user-session:broker-user-index:%s", brokerUserId);
+    String indexKey = KeyFormat.userSessionBrokerUserIndex(realm.getId(), brokerUserId);
     return mergeAndDeduplicate(
         as.stream().map(a -> (UserSessionModel) a).filter(a -> !a.isOffline()),
         getUserSessionsStreamByIndexKey(indexKey, realm, false).map(s -> (UserSessionModel) s),
@@ -374,7 +374,7 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     RedisUserSessionAdapter a = brokerSessionIdSessions.getFirst(brokerSessionId);
     if (a != null && !a.isMarkedForDelete()) return a;
 
-    String indexKey = String.format("user-session:broker-session-index:%s", brokerSessionId);
+    String indexKey = KeyFormat.userSessionBrokerSessionIndex(realm.getId(), brokerSessionId);
     return getUserSessionsStreamByIndexKey(indexKey, realm, false).findFirst().orElse(null);
   }
 
@@ -410,7 +410,7 @@ public class RedisUserSessionProvider implements UserSessionProvider {
   @Override
   public Map<String, Long> getActiveClientSessionStats(RealmModel realm, boolean offline) {
     log.tracef("getActiveClientSessionStats(%s, %s)%s", realm, offline, getShortStackTrace());
-    String indexKey = String.format("user-session:realm-index:%s", realm.getId());
+    String indexKey = KeyFormat.userSessionRealmIndex(realm.getId());
     return getUserSessionsStreamByIndexKey(indexKey, realm, offline)
         .map(this::getUserSessionAdapter)
         .filter(Objects::nonNull)
@@ -431,7 +431,7 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     if (session instanceof RedisUserSessionAdapter) {
       a = (RedisUserSessionAdapter) session;
     } else {
-      a = userSessionTrx.getIfPresent(new UserSessionKey(session.getId()));
+      a = userSessionTrx.getIfPresent(new UserSessionKey(realm.getId(), session.getId()));
     }
     // https://github.com/keycloak/keycloak/blob/archive/map-store/model/map/src/main/java/org/keycloak/models/map/userSession/MapUserSessionProvider.java#L326-L332
     if (a != null && Objects.equals(session.getRealm(), realm) && !session.isOffline()) {
@@ -485,7 +485,7 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     log.tracef("removeUserSessions(%s)%s", realm, getShortStackTrace());
     // TODO make this efficient. maybe with a SCAN/COUNT?
 
-    String indexKey = String.format("user-session:realm-index:%s", realm.getId());
+    String indexKey = KeyFormat.userSessionRealmIndex(realm.getId());
     getUserSessionsStreamByIndexKey(indexKey, realm, false).forEach(a -> removeSession(a));
     // TODO better way to do offline/online
     getUserSessionsStreamByIndexKey(indexKey, realm, true).forEach(a -> removeSession(a));
@@ -538,8 +538,7 @@ public class RedisUserSessionProvider implements UserSessionProvider {
   public UserSessionModel getOfflineUserSession(RealmModel realm, String userSessionId) {
     log.tracef("getOfflineUserSession(%s, %s)%s", realm, userSessionId, getShortStackTrace());
 
-    var correspondingSessionIndex =
-        "user-session:corresponding-session-index:%s".formatted(userSessionId);
+    var correspondingSessionIndex = KeyFormat.userSessionCorrespondingIndex(realm.getId(), userSessionId);
     return getOfflineUserSessionEntityStream(realm, userSessionId)
         .filter(Objects::nonNull)
         .findFirst()
@@ -562,7 +561,8 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     } else if (userSession.getNote(CORRESPONDING_SESSION_ID) != null) {
       uk = userSession.getNote(CORRESPONDING_SESSION_ID);
     }
-    RedisUserSessionAdapter entity = userSessionTrx.getIfPresent(new UserSessionKey(uk));
+    RedisUserSessionAdapter entity =
+        userSessionTrx.getIfPresent(new UserSessionKey(realm.getId(), uk));
     removeSession(entity);
   }
 
@@ -622,7 +622,7 @@ public class RedisUserSessionProvider implements UserSessionProvider {
   public Stream<UserSessionModel> getOfflineUserSessionsStream(RealmModel realm, UserModel user) {
     log.tracef("getOfflineUserSessionsStream(%s, %s)%s", realm, user, getShortStackTrace());
 
-    String indexKey = String.format("user-session:user-index:%s", user.getId());
+    String indexKey = KeyFormat.userSessionUserIndex(realm.getId(), user.getId());
     return getUserSessionsStreamByIndexKey(indexKey, realm, true).map(s -> (UserSessionModel) s);
   }
 
@@ -638,7 +638,7 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     List<RedisUserSessionAdapter> as = brokerUserIdSessions.getList(brokerUserId);
     if (as == null) as = Lists.newArrayList();
     // from the store
-    String indexKey = String.format("user-session:broker-user-index:%s", brokerUserId);
+    String indexKey = KeyFormat.userSessionBrokerUserIndex(realm.getId(), brokerUserId);
     return mergeAndDeduplicate(
         as.stream().map(a -> (UserSessionModel) a).filter(a -> a.isOffline()),
         getUserSessionsStreamByIndexKey(indexKey, realm, true).map(s -> (UserSessionModel) s),
@@ -649,21 +649,11 @@ public class RedisUserSessionProvider implements UserSessionProvider {
   public long getOfflineSessionsCount(RealmModel realm, ClientModel client) {
     log.tracef("getOfflineSessionsCount(%s, %s)%s", realm, client, getShortStackTrace());
 
-    String indexKey = String.format("authenticated-client:client-index:%s", client.getId());
-    log.tracef("[redis] SMEMBERS %s", indexKey);
-    Set<String> strIds = Sets.newTreeSet(jedis.smembers(indexKey)); // for consistent sorting
-    if (!strIds.isEmpty()) {
-      return strIds.stream()
-          .map(AuthenticatedClientSessionKey::fromString)
-          .map(clientSessionTrx::getIfPresent)
-          .filter(Objects::nonNull)
-          .filter(c -> c.getRealmId().equals(realm.getId()))
-          .filter(c -> c.getClientUuid().equals(client.getId()))
-          .map(RedisAuthenticatedClientSessionAdapter::getUserSession)
-          .filter(UserSessionModel::isOffline)
-          .count();
-    }
-    return 0;
+    return clientSessionsByIndex(realm, client)
+        .map(RedisAuthenticatedClientSessionAdapter::getUserSession)
+        .filter(Objects::nonNull)
+        .filter(UserSessionModel::isOffline)
+        .count();
   }
 
   // xx
@@ -674,24 +664,12 @@ public class RedisUserSessionProvider implements UserSessionProvider {
         "getOfflineUserSessionsStream(%s, %s, %s, %s)%s",
         realm, client, firstResult, maxResults, getShortStackTrace());
 
-    String indexKey = String.format("authenticated-client:client-index:%s", client.getId());
-    log.tracef("[redis] SMEMBERS %s", indexKey);
-    Set<String> strIds = Sets.newTreeSet(jedis.smembers(indexKey)); // for consistent sorting
-    if (!strIds.isEmpty()) {
-      return strIds.stream()
-          .map(AuthenticatedClientSessionKey::fromString)
-          .map(clientSessionTrx::getIfPresent)
-          .filter(Objects::nonNull)
-          .filter(c -> c.getRealmId().equals(realm.getId()))
-          .filter(c -> c.getClientUuid().equals(client.getId()))
-          .map(RedisAuthenticatedClientSessionAdapter::getUserSession)
-          .filter(Objects::nonNull)
-          .filter(UserSessionModel::isOffline)
-          .skip(firstResult != null && firstResult > 0 ? firstResult : 0)
-          .limit(maxResults != null && maxResults > 0 ? maxResults : Long.MAX_VALUE);
-    } else {
-      return Stream.empty();
-    }
+    return clientSessionsByIndex(realm, client)
+        .map(RedisAuthenticatedClientSessionAdapter::getUserSession)
+        .filter(Objects::nonNull)
+        .filter(UserSessionModel::isOffline)
+        .skip(firstResult != null && firstResult > 0 ? firstResult : 0)
+        .limit(maxResults != null && maxResults > 0 ? maxResults : Long.MAX_VALUE);
   }
 
   @SuppressWarnings("removal")
@@ -761,36 +739,57 @@ public class RedisUserSessionProvider implements UserSessionProvider {
 
     // first get a user entity by ID
     // check if it's an offline user session
-    RedisUserSessionAdapter userSessionEntity = getUserSessionById(userSessionId);
+    RedisUserSessionAdapter userSessionEntity = getUserSessionById(realm, userSessionId);
     if (userSessionEntity != null) {
       if (userSessionEntity.isOffline()) {
         return Stream.of(userSessionEntity);
       }
     } else {
       // no session found by the given ID, try to find by corresponding session ID
-      var correspondingSessionIndex =
-          "user-session:corresponding-session-index:%s".formatted(userSessionId);
+      var correspondingSessionIndex = KeyFormat.userSessionCorrespondingIndex(realm.getId(), userSessionId);
       return getUserSessionsStreamByIndexKey(correspondingSessionIndex, realm, true);
     }
 
     // it's online user session so lookup offline user session by corresponding session id reference
     String offlineUserSessionId = userSessionEntity.getNote(CORRESPONDING_SESSION_ID);
     if (offlineUserSessionId != null) {
-      return Stream.ofNullable(getUserSessionById(offlineUserSessionId));
+      return Stream.ofNullable(getUserSessionById(realm, offlineUserSessionId));
     }
 
     return Stream.empty();
   }
 
-  private RedisUserSessionAdapter getUserSessionById(String id) {
+  private RedisUserSessionAdapter getUserSessionById(RealmModel realm, String id) {
     if (id == null) return null;
 
     RedisUserSessionAdapter userSessionEntity = transientUserSessions.get(id);
 
     if (userSessionEntity == null) {
-      return userSessionTrx.getIfPresent(new UserSessionKey(id));
+      return userSessionTrx.getIfPresent(new UserSessionKey(realm.getId(), id));
     }
     return userSessionEntity;
+  }
+
+  /** Shared csx-index walk with lazy reaping of stale members (audit §4.7). */
+  private Stream<RedisAuthenticatedClientSessionAdapter> clientSessionsByIndex(
+      RealmModel realm, ClientModel client) {
+    String indexKey = KeyFormat.clientSessionClientIndex(realm.getId(), client.getId());
+    log.tracef("[redis] SMEMBERS %s", indexKey);
+    Set<String> strIds = Sets.newTreeSet(jedis.smembers(indexKey)); // for consistent sorting
+    List<RedisAuthenticatedClientSessionAdapter> out = Lists.newArrayList();
+    for (String member : strIds) {
+      RedisAuthenticatedClientSessionAdapter c =
+          clientSessionTrx.getIfPresent(AuthenticatedClientSessionKey.fromString(member));
+      if (c == null) {
+        // audit §4.7 hygiene, deferred to commit like every other write.
+        clientSessionTrx.reapIndexMemberOnCommit(indexKey, member);
+        continue;
+      }
+      if (c.getRealmId().equals(realm.getId()) && c.getClientUuid().equals(client.getId())) {
+        out.add(c);
+      }
+    }
+    return out.stream();
   }
 
   private RedisUserSessionAdapter createUserSessionEntityInstance(
@@ -816,7 +815,7 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     return entity;
   }
 
-  private RedisUserSessionAdapter createUserSessionEntityInstance(
+  protected RedisUserSessionAdapter createUserSessionEntityInstance(
       String id,
       String realmId,
       String userId,
@@ -829,7 +828,8 @@ public class RedisUserSessionProvider implements UserSessionProvider {
       boolean offline) {
     int timestamp = Time.currentTime();
     id = id == null ? KeycloakModelUtils.generateId() : id;
-    RedisUserSessionAdapter entity = userSessionTrx.get(new UserSessionKey(id));
+    RedisUserSessionAdapter entity =
+        userSessionTrx.get(new UserSessionKey(realmId, id));
     entity.setUserId(userId);
     entity.setRealmId(realmId);
     entity.setLoginUsername(loginUsername);
@@ -855,7 +855,7 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     int timestamp = Time.currentTime();
     id = id == null ? createAuthenticatedClientId(userSessionId, clientId) : id;
     RedisAuthenticatedClientSessionAdapter entity =
-        clientSessionTrx.get(new AuthenticatedClientSessionKey(id));
+        clientSessionTrx.get(new AuthenticatedClientSessionKey(realmId, id));
     entity.setRealmId(realmId);
     entity.setClientUuid(clientId);
     entity.setParentId(userSessionId);

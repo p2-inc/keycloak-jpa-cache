@@ -251,6 +251,25 @@ public abstract class MapEntity<K extends Key> {
     }
   }
 
+  /**
+   * Key-derived field setter: keys parsed from index members only carry the
+   * parts their format encodes (DEFAULT has no realm, SERVERLESS per-tab keys
+   * no clientId) — an empty part must never clobber a field loaded from Redis.
+   */
+  protected void setFieldFromKey(String field, String value) {
+    if (!Strings.isNullOrEmpty(value)) {
+      setField(field, value);
+    }
+  }
+
+  /** Prebuilt-key variant of {@link #siPut}: skips when {@code guardParam} is empty. */
+  protected static void siPutIf(
+      ImmutableMap.Builder<String, String> b, String guardParam, String indexKey, String value) {
+    if (!Strings.isNullOrEmpty(guardParam) && value != null) {
+      b.put(indexKey, value);
+    }
+  }
+
   public K getKey() {
     return this.key;
   }

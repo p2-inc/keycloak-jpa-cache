@@ -18,12 +18,12 @@ public class AuthenticationSessionAdapterSupplier
 
   @Override
   public RedisAuthenticationSessionAdapter newInstance(AuthenticationSessionKey key) {
-    return new RedisAuthenticationSessionAdapter(session, key.clientId(), key.tabId());
+    return new RedisAuthenticationSessionAdapter(session, key);
   }
 
   @Override
   public RedisAuthenticationSessionAdapter newInstance(
       AuthenticationSessionKey key, Map<String, String> data) {
-    return new RedisAuthenticationSessionAdapter(session, key.clientId(), key.tabId(), data);
+    return new RedisAuthenticationSessionAdapter(session, key, data);
   }
 }

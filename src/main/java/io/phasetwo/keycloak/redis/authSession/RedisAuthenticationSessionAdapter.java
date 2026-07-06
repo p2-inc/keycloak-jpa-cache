@@ -1,6 +1,7 @@
 package io.phasetwo.keycloak.redis.authSession;
 
 import com.google.common.collect.ImmutableMap;
+import io.phasetwo.keycloak.redis.KeyFormat;
 import io.phasetwo.keycloak.redis.MapEntity;
 import java.util.Map;
 import java.util.Set;
@@ -21,23 +22,27 @@ public class RedisAuthenticationSessionAdapter extends MapEntity<AuthenticationS
 
   private RootAuthenticationSessionModel parent;
 
-  public RedisAuthenticationSessionAdapter(KeycloakSession session, String clientId, String tabId) {
-    this(session, clientId, tabId, null);
+  public RedisAuthenticationSessionAdapter(KeycloakSession session, AuthenticationSessionKey key) {
+    this(session, key, null);
   }
 
   public RedisAuthenticationSessionAdapter(
-      KeycloakSession session, String clientId, String tabId, Map<String, String> existingData) {
+      KeycloakSession session, AuthenticationSessionKey key, Map<String, String> existingData) {
 
-    super(new AuthenticationSessionKey(clientId, tabId), existingData);
+    super(key, existingData);
     this.session = session;
-    setField("clientUuid", clientId);
-    setField("tabId", tabId);
+    setFieldFromKey("tabId", key.tabId());
+    setFieldFromKey("parentId", key.rootId());
+    setFieldFromKey("realmId", key.realmId());
+    setFieldFromKey("clientUuid", key.clientId());
   }
 
   @Override
   public Map<String, String> getSecondaryIndexes() {
     ImmutableMap.Builder<String, String> b = ImmutableMap.builder();
-    siPut(b, "auth-session:parent:%s", getString("parentId"), getKey().key());
+    siPutIf(b, getString("parentId"),
+        KeyFormat.authSessionParentIndex(getString("realmId"), getString("parentId")),
+        getKey().key());
     return b.build();
   }
 

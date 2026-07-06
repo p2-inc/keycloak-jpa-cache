@@ -19,12 +19,12 @@ public class AuthenticatedClientSessionAdapterSupplier
 
   @Override
   public RedisAuthenticatedClientSessionAdapter newInstance(AuthenticatedClientSessionKey key) {
-    return new RedisAuthenticatedClientSessionAdapter(session, key.id());
+    return new RedisAuthenticatedClientSessionAdapter(session, key.realmId(), key.id());
   }
 
   @Override
   public RedisAuthenticatedClientSessionAdapter newInstance(
       AuthenticatedClientSessionKey key, Map<String, String> data) {
-    return new RedisAuthenticatedClientSessionAdapter(session, key.id(), data);
+    return new RedisAuthenticatedClientSessionAdapter(session, key.realmId(), key.id(), data);
   }
 }

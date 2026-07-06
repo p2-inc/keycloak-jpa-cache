@@ -5,6 +5,7 @@ import static org.keycloak.models.utils.SessionExpiration.getAuthSessionLifespan
 import com.google.common.collect.ImmutableMap;
 import io.phasetwo.keycloak.common.ExpirableEntity;
 import io.phasetwo.keycloak.common.TimeAdapter;
+import io.phasetwo.keycloak.redis.KeyFormat;
 import io.phasetwo.keycloak.redis.MapEntity;
 import io.phasetwo.keycloak.redis.RedisChangelogTransaction;
 import java.util.*;
@@ -55,14 +56,14 @@ public class RedisRootAuthenticationSessionAdapter extends MapEntity<RootAuthent
     this.jedis = jedis;
     this.authSessionsLimit = authSessionsLimit;
     this.authSessionTrx = authSessionTrx;
-    setField("id", id);
-    setField("realmId", realmId);
+    setFieldFromKey("id", id);
+    setFieldFromKey("realmId", realmId);
   }
 
   @Override
   public Map<String, String> getSecondaryIndexes() {
     ImmutableMap.Builder<String, String> b = ImmutableMap.builder();
-    siPut(b, "root-auth-session:realm-index:%s", getRealmId(), getKey().key());
+    siPutIf(b, getRealmId(), KeyFormat.rootAuthSessionRealmIndex(getRealmId()), getKey().key());
     return b.build();
   }
 
@@ -115,7 +116,7 @@ public class RedisRootAuthenticationSessionAdapter extends MapEntity<RootAuthent
   @Override
   public Map<String, AuthenticationSessionModel> getAuthenticationSessions() {
 
-    String indexKey = String.format("auth-session:parent:%s", getId());
+    String indexKey = KeyFormat.authSessionParentIndex(getRealmId(), getId());
     log.debugf("[redis] SMEMBERS %s", indexKey);
     Set<String> strIds = jedis.smembers(indexKey);
     if (strIds != null && !strIds.isEmpty()) {
@@ -124,9 +125,9 @@ public class RedisRootAuthenticationSessionAdapter extends MapEntity<RootAuthent
         AuthenticationSessionKey key = AuthenticationSessionKey.fromString(rawId);
         RedisAuthenticationSessionAdapter session = authSessionTrx.getIfPresent(key);
         if (session == null) {
-          log.tracef(
-              "Ignoring stale auth-session parent index entry for rootSession=%s child=%s",
-              getId(), rawId);
+          // audit §4.7 index hygiene: skip the stale member now; the reap
+          // DEFERS to transaction commit — no Redis writes outside commitImpl.
+          authSessionTrx.reapIndexMemberOnCommit(indexKey, rawId);
           continue;
         }
         sessions.put(key.tabId(), session);
@@ -143,7 +144,8 @@ public class RedisRootAuthenticationSessionAdapter extends MapEntity<RootAuthent
     if (tabId == null) {
       return null;
     }
-    return authSessionTrx.getIfPresent(new AuthenticationSessionKey(client.getId(), tabId));
+    return authSessionTrx.getIfPresent(
+        new AuthenticationSessionKey(getRealmId(), getId(), client.getId(), tabId));
   }
 
   private static final Comparator<RedisAuthenticationSessionAdapter> TIMESTAMP_COMPARATOR =
@@ -177,7 +179,8 @@ public class RedisRootAuthenticationSessionAdapter extends MapEntity<RootAuthent
 
     String tabId = generateTabId();
     RedisAuthenticationSessionAdapter adapter =
-        authSessionTrx.get(new AuthenticationSessionKey(client.getId(), tabId));
+        authSessionTrx.get(
+            new AuthenticationSessionKey(getRealmId(), getId(), client.getId(), tabId));
     adapter.setClientUuid(client.getId());
     adapter.setParentSession(this);
     adapter.setTimestamp(timestamp);

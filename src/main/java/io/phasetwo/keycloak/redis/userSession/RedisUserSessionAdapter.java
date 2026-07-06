@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import io.phasetwo.keycloak.common.ExpirableEntity;
+import io.phasetwo.keycloak.redis.KeyFormat;
 import io.phasetwo.keycloak.redis.MapEntity;
 import io.phasetwo.keycloak.redis.RedisChangelogTransaction;
 import io.phasetwo.keycloak.redis.userSession.expiration.SessionExpirationData;
@@ -38,8 +39,9 @@ public class RedisUserSessionAdapter extends MapEntity<UserSessionKey>
       RedisChangelogTransaction<
               AuthenticatedClientSessionKey, RedisAuthenticatedClientSessionAdapter>
           clientSessionTrx,
+      String realmId,
       String id) {
-    this(session, jedis, clientSessionTrx, id, null);
+    this(session, jedis, clientSessionTrx, realmId, id, null);
   }
 
   public RedisUserSessionAdapter(
@@ -48,36 +50,55 @@ public class RedisUserSessionAdapter extends MapEntity<UserSessionKey>
       RedisChangelogTransaction<
               AuthenticatedClientSessionKey, RedisAuthenticatedClientSessionAdapter>
           clientSessionTrx,
+      String realmId,
       String id,
       Map<String, String> existingData) {
-    super(new UserSessionKey(id), existingData);
+    super(new UserSessionKey(realmId, id), existingData);
     this.session = session;
     this.jedis = jedis;
     this.clientSessionTrx = clientSessionTrx;
-    setField("id", id);
+    setFieldFromKey("id", id);
+    setFieldFromKey("realmId", realmId);
   }
 
   @Override
   public Map<String, String> getSecondaryIndexes() {
+    // Index names are KeyFormat-driven (historical layout by default;
+    // realm-hash-tagged C§3 grammar in serverless mode).
     ImmutableMap.Builder<String, String> b = ImmutableMap.builder();
-    siPut(b, "user-session:realm-index:%s", getRealmId(), getKey().key());
-    siPut(b, "user-session:user-index:%s", getUserId(), getKey().key());
-    siPut(b, "user-session:broker-user-index:%s", getBrokerUserId(), getKey().key());
-    siPut(b, "user-session:broker-session-index:%s", getBrokerSessionId(), getKey().key());
+    siPutIf(b, getRealmId(), KeyFormat.userSessionRealmIndex(getRealmId()), getKey().key());
+    siPutIf(b, getUserId(),
+        KeyFormat.userSessionUserIndex(getRealmId(), getUserId()), getKey().key());
+    siPutIf(b, getBrokerUserId(),
+        KeyFormat.userSessionBrokerUserIndex(getRealmId(), getBrokerUserId()), getKey().key());
+    siPutIf(b, getBrokerSessionId(),
+        KeyFormat.userSessionBrokerSessionIndex(getRealmId(), getBrokerSessionId()),
+        getKey().key());
     String csi = getNote(CORRESPONDING_SESSION_ID);
-    siPut(b, "user-session:corresponding-session-index:%s", csi, getKey().key());
+    siPutIf(b, csi, KeyFormat.userSessionCorrespondingIndex(getRealmId(), csi), getKey().key());
     return b.build();
   }
 
   @Override
   public Map<String, AuthenticatedClientSessionModel> getAuthenticatedClientSessions() {
 
-    String indexKey = String.format("authenticated-client:parent-index:%s", getId());
+    String indexKey = KeyFormat.clientSessionParentIndex(getRealmId(), getId());
     log.tracef("[redis] SMEMBERS %s", indexKey);
     Set<String> strIds = jedis.smembers(indexKey);
     if (strIds != null && !strIds.isEmpty()) {
       clientSessions =
           strIds.stream()
+              .filter(raw -> {
+                // audit §4.7 index hygiene: skip members whose value key
+                // expired; the reap itself DEFERS to transaction commit —
+                // no Redis writes outside commitImpl.
+                if (clientSessionTrx.getIfPresent(
+                        AuthenticatedClientSessionKey.fromString(raw)) == null) {
+                  clientSessionTrx.reapIndexMemberOnCommit(indexKey, raw);
+                  return false;
+                }
+                return true;
+              })
               .map(AuthenticatedClientSessionKey::fromString)
               .map(clientSessionTrx::getIfPresent)
               .filter(Objects::nonNull)
@@ -345,7 +366,7 @@ public class RedisUserSessionAdapter extends MapEntity<UserSessionKey>
         if (ac instanceof RedisAuthenticatedClientSessionAdapter) {
           a = (RedisAuthenticatedClientSessionAdapter) ac;
         } else {
-          a = clientSessionTrx.get(new AuthenticatedClientSessionKey(ac.getId()));
+          a = clientSessionTrx.get(new AuthenticatedClientSessionKey(getRealmId(), ac.getId()));
         }
         if (a != null) {
           clientSessionTrx.addForDelete(a);

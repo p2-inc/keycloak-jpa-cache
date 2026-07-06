@@ -27,6 +27,9 @@ public class RedisChangelogTransaction<K extends Key, A extends MapEntity<K>>
 
   private final Map<K, A> cache = Maps.newHashMap();
   private final Map<K, A> toDelete = Maps.newHashMap();
+  // Stale index members discovered during reads, reaped at commit — reads
+  // must never write (keeps ALL Redis mutations inside commitImpl).
+  private final Map<String, java.util.Set<String>> indexReaps = Maps.newLinkedHashMap();
   private final AdapterSupplier<K, A> adapterSupplier;
   private final UnifiedJedis jedis;
   private final RedisMode redisMode;
@@ -125,7 +128,16 @@ public class RedisChangelogTransaction<K extends Key, A extends MapEntity<K>>
    */
   public Map<K, A> getAll(Collection<K> keys) {
     if (keys == null || keys.isEmpty()) return Maps.newLinkedHashMap();
-    AbstractPipeline pipeline = jedis.pipelined();
+    // try-with-resources: sync() flushes responses but only close() returns a
+    // pooled connection — without it, every call leaks one connection when the
+    // client is a JedisPooled (upstream-PR candidate; harmless for the
+    // single-connection UnifiedJedis case).
+    try (AbstractPipeline pipeline = jedis.pipelined()) {
+      return getAllPipelined(pipeline, keys);
+    }
+  }
+
+  private Map<K, A> getAllPipelined(AbstractPipeline pipeline, Collection<K> keys) {
     Map<K, Response<Map<String, String>>> responses = Maps.newLinkedHashMap();
     Map<K, A> result = Maps.newLinkedHashMap();
 
@@ -166,6 +178,18 @@ public class RedisChangelogTransaction<K extends Key, A extends MapEntity<K>>
     toDelete.put(model.getKey(), model);
   }
 
+  /**
+   * Registers a stale secondary-index member (its value key expired or
+   * vanished) for removal at commit. Read paths that discover staleness call
+   * this instead of issuing SREM inline: the read skips the member
+   * immediately for correctness, and the reap defers with everything else —
+   * no Redis writes outside {@link #commitImpl()}.
+   */
+  public void reapIndexMemberOnCommit(String indexKey, String member) {
+    if (indexKey == null || member == null) return;
+    indexReaps.computeIfAbsent(indexKey, k -> new java.util.LinkedHashSet<>()).add(member);
+  }
+
   public void cachedToDelete() {
     for (A model : cache.values()) {
       addForDelete(model);
@@ -174,7 +198,7 @@ public class RedisChangelogTransaction<K extends Key, A extends MapEntity<K>>
 
   @Override
   protected void commitImpl() {
-    if (cache.isEmpty() && toDelete.isEmpty()) {
+    if (cache.isEmpty() && toDelete.isEmpty() && indexReaps.isEmpty()) {
       log.trace("nothing to commit. skipping transaction...");
       return;
     }
@@ -192,6 +216,26 @@ public class RedisChangelogTransaction<K extends Key, A extends MapEntity<K>>
       deleteEntity(model);
       toDelete.remove(model.getKey());
     }
+
+    reapStaleIndexMembers();
+  }
+
+  /** Deferred audit-§4.7 hygiene: batch-SREM stale index members at commit. */
+  private void reapStaleIndexMembers() {
+    if (indexReaps.isEmpty()) return;
+    try (AbstractPipeline pipeline = jedis.pipelined()) {
+      reapPipelined(pipeline);
+    }
+    indexReaps.clear();
+  }
+
+  private void reapPipelined(AbstractPipeline pipeline) {
+    for (Map.Entry<String, java.util.Set<String>> entry : indexReaps.entrySet()) {
+      log.tracef("[redis] SREM %s %s (stale-index reap)", entry.getKey(), entry.getValue());
+      pipeline.srem(entry.getKey(), entry.getValue().toArray(new String[0]));
+      countOperation(SREM);
+    }
+    pipeline.sync();
   }
 
   private void deleteEntity(A model) {
@@ -312,6 +356,8 @@ public class RedisChangelogTransaction<K extends Key, A extends MapEntity<K>>
 
   @Override
   protected void rollbackImpl() {
-    // No action needed on rollback for this use case
+    // Buffered state is simply dropped; pending index reaps too (they are an
+    // optimization — the next reader re-discovers and re-registers them).
+    indexReaps.clear();
   }
 }
