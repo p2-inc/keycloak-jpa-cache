@@ -4,7 +4,7 @@
 
 Uses [Redis](https://redis.io/) or [Valkey](https://valkey.io/) instead of [Infinispan](https://infinispan.org/) for distributed caches. Overrides the [`DatastoreProvider`](https://www.keycloak.org/docs-api/latest/javadocs/org/keycloak/storage/DatastoreProvider.html).
 
-Requires [Keycloak](https://keycloak.org) >= `26`.
+Requires [Keycloak](https://keycloak.org) >= `26.7`, with the `stateless` preview feature enabled.
 
 Heavily inspired by [keycloak-cassandra-extension](https://github.com/opdt/keycloak-cassandra-extension). Enormous thanks to these amazing engineers. Also a big thanks to the the creators of the "map-store". That project was overly ambitious, but yielded some great decisions that made this possible. Thanks for keeping the `DatastoreProvider`.
 
@@ -33,14 +33,25 @@ We've also been working on a multi-region, active-active story for Keycloak sinc
 
 Applies to any deployment type:
 
-- Set `KC_COMMUNITY_REDIS_CACHE_ENABLED=true`
+- Enable the `stateless` feature: `KC_FEATURES=stateless` (or `--features=stateless`)
+- Select the Redis datastore: `KC_SPI_DATASTORE_PROVIDER=redis` (or `--spi-datastore--provider=redis`)
 - Set `KC_CACHE=local`
+
+Selecting the datastore is what activates the extension. Leaving it unselected keeps the jar on the classpath but dormant, so it never shadows a deployment that did not ask for it.
+
+`stateless` is a Keycloak preview feature added in 26.7. It moves authentication sessions, action tokens and brute-force counters out of Infinispan, which is what lets this extension drop the Infinispan overrides it used to need. The extension refuses to start without it.
+
+When the Redis datastore is selected, the extension disables Keycloak's authorization cache for you (it reaches for the Infinispan store factory directly, which this extension does not provide). The realm cache is deliberately left enabled — it is node-local and its invalidations travel over the Redis `PUBSUB` `ClusterProvider`.
+
+> :warning: **Upgrading from a pre-26.7 version:** `KC_COMMUNITY_REDIS_CACHE_ENABLED=true` still works as a deprecated alias for the datastore selection and logs a warning. It will be removed in a future release.
 
 ### Configuration properties
 
 | Property | Description | Example |
 | --- | --- | --- |
-| `KC_COMMUNITY_REDIS_CACHE_ENABLED` | Enable this extension (required). | `true` |
+| `KC_FEATURES` | Must include `stateless` (required). | `stateless` |
+| `KC_SPI_DATASTORE_PROVIDER` | Select this extension's datastore (required). | `redis` |
+| `KC_COMMUNITY_REDIS_CACHE_ENABLED` | Deprecated alias for `KC_SPI_DATASTORE_PROVIDER=redis`. | `true` |
 | `KC_SPI_REDIS_CONNECTION_DEFAULT_MODE` | Redis topology mode: `standalone`, `sentinel`, or `cluster`. | `standalone` |
 | `KC_SPI_REDIS_CONNECTION_DEFAULT_NODES` | Comma-delimited list of `host:port` nodes. For sentinel mode, these are the sentinel instances. | `redis-1:6379,redis-2:6379` |
 | `KC_SPI_REDIS_CONNECTION_DEFAULT_MASTER_NAME` | Sentinel master name (required when mode is `sentinel`). | `mymaster` |
@@ -53,7 +64,8 @@ Examples:
 
 ```bash
 KC_CACHE=local
-KC_COMMUNITY_REDIS_CACHE_ENABLED=true
+KC_FEATURES=stateless
+KC_SPI_DATASTORE_PROVIDER=redis
 # Standalone
 KC_SPI_REDIS_CONNECTION_DEFAULT_MODE=standalone
 KC_SPI_REDIS_CONNECTION_DEFAULT_NODES=redis:6379
@@ -79,13 +91,13 @@ A pre-built docker image is also available at (https://quay.io/repository/phaset
 
 ## Details and known issues
 
-- Local caches (e.g. `user`, `realm`, etc.) still use Infinispan internally. Only the distributed caches are replaced.
+- Local caches (e.g. `user`, `realm`, etc.) still use Infinispan internally. Only the distributed caches are replaced. Under `stateless` Keycloak removes its own clustered caches, so embedded Infinispan is reduced to node-local caches.
 - ~~We use a job to expire entries rather than using Redis native TTL. This is because we want it to work with implementations that don't support multi-region expiration (e.g. AWS MemoryDB).~~
 - No migration of existing sessions is done.
 - We store both normal and "offline" sessions in the cache. No database persistence is used.
-- We don't store revoked tokens in the database. This is an implementation detail in the Keycloak default implementation we _might_ adopt, but for now we suggest you use Redis persistence.
+- We don't store revoked tokens in the database. Keycloak 26.7 split them out into a `RevokedTokenProvider` SPI whose only built-in `stateless` implementation is JPA; we serve it from Redis instead, so we still suggest you use Redis persistence.
 - `ClusterProvider` implementation uses Redis `PUBSUB`. In the future, we need to add SNS (AWS) or Pub/Sub (GCP) for multi-region.
-- Keycloak Authorization probably won't work (Keycloak tries to use `InfinispanStoreFactory` direclty in a lot of places).
+- Keycloak Authorization probably won't work (Keycloak tries to use `InfinispanStoreFactory` direclty in a lot of places). Selecting the Redis datastore disables the authorization cache automatically.
 - Some tests are still skipped or failing. We need to understand if this is because the test fails to do everything in a single transaction (Keycloak doesn't do this internally) or if there is something we are missing.
 - ~~Hasn't been benchmarked to look for issues under load.~~
 - ~~You should probably enable sticky sessions on your load balancer, although we need to substantiate this with testing.~~

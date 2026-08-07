@@ -1,18 +1,17 @@
 package io.phasetwo.keycloak.common;
 
-import static io.phasetwo.keycloak.common.CommunityProfiles.isRedisCacheEnabled;
-
+import io.phasetwo.keycloak.redis.RedisStoreConfig;
 import org.keycloak.Config;
 import org.keycloak.provider.EnvironmentDependentProviderFactory;
 
 public interface IsSupported extends EnvironmentDependentProviderFactory {
 
   default boolean isSupported() {
-    return isRedisCacheEnabled();
+    return RedisStoreConfig.isEnabled();
   }
 
   @Override
   default boolean isSupported(Config.Scope config) {
-    return isRedisCacheEnabled();
+    return RedisStoreConfig.isEnabled();
   }
 }

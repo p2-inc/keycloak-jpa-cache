@@ -41,7 +41,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <main.java.package>io.phasetwo.keycloak.redis</main.java.package>
     <junit.version>5.8.2</junit.version>
-    <keycloak.version>26.6.3</keycloak.version>
+    <keycloak.version>26.7.1</keycloak.version>
     <lombok.version>1.18.42</lombok.version>
     <auto-service.version>1.1.1</auto-service.version>
     <testcontainers.version>1.21.4</testcontainers.version>
@@ -69,6 +69,7 @@
     <jdbc.mvn.version>2.2.224</jdbc.mvn.version>
     <jacoco.skip>true</jacoco.skip>
     <smallrye.jandex.version>3.0.5</smallrye.jandex.version>
+    <smallrye.config.version>3.17.2</smallrye.config.version>
     <keycloak.jedis>7.2.1</keycloak.jedis>
     <keycloak.userSessions.infinispan.preloadOfflineSessionsFromDatabase>false</keycloak.userSessions.infinispan.preloadOfflineSessionsFromDatabase>
   </properties>
@@ -160,7 +161,6 @@
           <systemPropertyVariables>
             <!-- keycloak.model.parameters lists parameter classes from
                  org.keycloak.model.parameters package and determine enabled providers -->
-            <kc.community.redis.cache.enabled>true</kc.community.redis.cache.enabled>
             <keycloak.model.parameters>RedisParameters</keycloak.model.parameters>
             <keycloak.connectionsJpa.default.driver>${keycloak.connectionsJpa.driver}</keycloak.connectionsJpa.default.driver>
             <keycloak.connectionsJpa.default.database>${keycloak.connectionsJpa.database}</keycloak.connectionsJpa.default.database>
@@ -168,6 +168,7 @@
             <keycloak.connectionsJpa.default.password>${keycloak.connectionsJpa.password}</keycloak.connectionsJpa.default.password>
             <keycloak.connectionsJpa.default.url>${keycloak.connectionsJpa.url}</keycloak.connectionsJpa.default.url>
             <keycloak.userSessions.infinispan.preloadOfflineSessionsFromDatabase>${keycloak.userSessions.infinispan.preloadOfflineSessionsFromDatabase}</keycloak.userSessions.infinispan.preloadOfflineSessionsFromDatabase>
+            <keycloak.profile.feature.stateless>enabled</keycloak.profile.feature.stateless>
             <keycloak.profile.feature.authorization>disabled</keycloak.profile.feature.authorization>
             <keycloak.profile.feature.organization>disabled</keycloak.profile.feature.organization>
             <keycloak.profile.feature.persistent_user_sessions>disabled</keycloak.profile.feature.persistent_user_sessions>
@@ -340,6 +341,14 @@
       <groupId>io.smallrye</groupId>
       <artifactId>jandex</artifactId>
       <version>${smallrye.jandex.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <!-- ConfigSourceFactory hook used by RedisConfigDefaultsSourceFactory to self-configure
+         the deployment. Provided by the Keycloak distribution at runtime. -->
+    <dependency>
+      <groupId>io.smallrye.config</groupId>
+      <artifactId>smallrye-config-core</artifactId>
+      <version>${smallrye.config.version}</version>
       <scope>provided</scope>
     </dependency>
 

@@ -108,7 +108,7 @@ services:
 
   # -------- Keycloak --------
   keycloak:
-    image: quay.io/phasetwo/keycloak-crdb:26.5.6
+    image: quay.io/phasetwo/keycloak-crdb:26.7.1
     ulimits:
       nofile:
         soft: 65536
@@ -144,7 +144,8 @@ services:
       KC_HTTP_METRICS_HISTOGRAMS_ENABLED: "true"
       KC_HTTP_METRICS_SLOS: "50,250,500,1000"
 
-      KC_COMMUNITY_REDIS_CACHE_ENABLED: "true"
+      KC_FEATURES: stateless
+      KC_SPI_DATASTORE_PROVIDER: redis
       KC_SPI_REDIS_CONNECTION_DEFAULT_MODE: "cluster"
       KC_SPI_REDIS_CONNECTION_DEFAULT_NODES: "valkey-node-1:6379,valkey-node-2:6379,valkey-node-3:6379"
 

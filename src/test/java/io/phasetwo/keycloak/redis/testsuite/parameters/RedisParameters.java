@@ -3,11 +3,13 @@ package io.phasetwo.keycloak.redis.testsuite.parameters;
 import com.google.common.collect.ImmutableSet;
 import io.phasetwo.keycloak.compatibility.MapPublicKeyStorageProviderFactory;
 import io.phasetwo.keycloak.redis.RedisDatastoreProviderFactory;
+import io.phasetwo.keycloak.redis.RedisStoreConfig;
 import io.phasetwo.keycloak.redis.authSession.RedisAuthenticationSessionProviderFactory;
 import io.phasetwo.keycloak.redis.connection.DefaultRedisConnectionProviderFactory;
 import io.phasetwo.keycloak.redis.connection.RedisConnectionProviderFactory;
 import io.phasetwo.keycloak.redis.connection.RedisConnectionSpi;
 import io.phasetwo.keycloak.redis.loginFailure.RedisUserLoginFailureProviderFactory;
+import io.phasetwo.keycloak.redis.revokedToken.RedisRevokedTokenProviderFactory;
 import io.phasetwo.keycloak.redis.singleUseObject.RedisSingleUseObjectProviderFactory;
 import io.phasetwo.keycloak.redis.testsuite.Config;
 import io.phasetwo.keycloak.redis.testsuite.KeycloakModelParameters;
@@ -106,6 +108,7 @@ public class RedisParameters extends KeycloakModelParameters {
           .add(PasswordPolicyManagerSpi.class)
           .add(PasswordPolicySpi.class)
           .add(PublicKeyStorageSpi.class)
+          .add(RevokedTokenSpi.class)
           .add(SingleUseObjectSpi.class)
           .add(UserSessionPersisterSpi.class)
           .add(UserProfileSpi.class)
@@ -118,6 +121,7 @@ public class RedisParameters extends KeycloakModelParameters {
 
   static final Set<Class<? extends ProviderFactory>> ALLOWED_FACTORIES =
       ImmutableSet.<Class<? extends ProviderFactory>>builder()
+          .add(RedisRevokedTokenProviderFactory.class)
           .add(RedisSingleUseObjectProviderFactory.class)
           .add(RedisUserLoginFailureProviderFactory.class)
           .add(RedisUserSessionProviderFactory.class)
@@ -223,7 +227,7 @@ public class RedisParameters extends KeycloakModelParameters {
         .provider(MultiValueValidator.ID);
 
     cf.spi("datastore")
-        .defaultProvider("legacy")
+        .defaultProvider(RedisStoreConfig.DATASTORE_PROVIDER_ID)
         .config("dir", "${project.build.directory:target}");
 
     cf.spi(RedisConnectionSpi.NAME)

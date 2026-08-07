@@ -55,11 +55,11 @@ import org.keycloak.executors.ExecutorsSpi;
 import org.keycloak.models.*;
 import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.models.utils.PostMigrationEvent;
+import org.keycloak.provider.KeycloakDeploymentInfo;
 import org.keycloak.provider.Provider;
 import org.keycloak.provider.ProviderFactory;
 import org.keycloak.provider.ProviderManager;
 import org.keycloak.provider.Spi;
-import org.keycloak.quarkus.runtime.integration.resteasy.QuarkusKeycloakContext;
 import org.keycloak.services.DefaultComponentFactoryProviderFactory;
 import org.keycloak.services.DefaultKeycloakContext;
 import org.keycloak.services.DefaultKeycloakSession;
@@ -321,7 +321,7 @@ public abstract class KeycloakModelTest {
               @Override
               protected DefaultKeycloakContext createKeycloakContext(
                   KeycloakSession keycloakSession) {
-                return new QuarkusKeycloakContext(this);
+                return new TestKeycloakContext(this);
               }
             };
           }
@@ -329,6 +329,22 @@ public abstract class KeycloakModelTest {
           @Override
           public void init() {
             Profile.configure(new PropertiesProfileConfigResolver(System.getProperties()));
+            // Keycloak 26.7 moved SPI discovery and factory loading out of
+            // DefaultKeycloakSessionFactory#init (the Quarkus build step owns it now), leaving init
+            // to only run postInit on an already-populated factoriesMap. This embedded harness has
+            // no build step, so it does the loading itself.
+            ProviderManager pm =
+                new ProviderManager(
+                    KeycloakDeploymentInfo.create().services(),
+                    getClass().getClassLoader(),
+                    org.keycloak.Config.scope().getArray("providers"));
+            for (Spi spi : pm.loadSpis()) {
+              if (spi.isEnabled()) {
+                spis.add(spi);
+              }
+            }
+            factoriesMap = loadFactories(pm);
+            checkProvider();
             super.init();
           }
 

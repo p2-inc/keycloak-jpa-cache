@@ -6,10 +6,10 @@ on:
       - main
 
 env:
-  # Version 26.6.3
+  # Version 26.7.1
   VERSION_MAJOR: 26
-  VERSION_SUBMAJOR: 6
-  VERSION_MINOR: 3
+  VERSION_SUBMAJOR: 7
+  VERSION_MINOR: 1
 
 jobs:
   release-public:

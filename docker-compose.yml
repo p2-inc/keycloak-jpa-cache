@@ -7,13 +7,14 @@ volumes:
 
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:26.6.3
+    image: quay.io/keycloak/keycloak:26.7.1
     volumes:
       - h2_data:/opt/keycloak/data
       - ./target/keycloak-redis-0.1-SNAPSHOT-withdeps.jar:/opt/keycloak/providers/keycloak-redis-0.1-SNAPSHOT-withdeps.jar
     environment:
       KC_DB_USERNAME: "sa"
-      KC_COMMUNITY_REDIS_CACHE_ENABLED: true
+      KC_FEATURES: stateless
+      KC_SPI_DATASTORE_PROVIDER: redis
       KC_SPI_REDIS_CONNECTION_DEFAULT_MODE: "standalone"
       KC_SPI_REDIS_CONNECTION_DEFAULT_NODES: "valkey:6379"
       KC_CACHE: local
