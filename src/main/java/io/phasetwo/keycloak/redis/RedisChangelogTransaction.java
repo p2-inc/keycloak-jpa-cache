@@ -20,6 +20,7 @@ import redis.clients.jedis.AbstractPipeline;
 import redis.clients.jedis.AbstractTransaction;
 import redis.clients.jedis.Response;
 import redis.clients.jedis.UnifiedJedis;
+import redis.clients.jedis.args.ExpiryOption;
 
 @JBossLog
 public class RedisChangelogTransaction<K extends Key, A extends MapEntity<K>>
@@ -312,6 +313,36 @@ public class RedisChangelogTransaction<K extends Key, A extends MapEntity<K>>
     return invocation;
   }
 
+  /**
+   * TTL backstop for a secondary-index Set (issue #78).
+   *
+   * <p>A session hash can vanish by native TTL without ever going through the delete path, and then
+   * nothing SREMs its index members — so index Sets grow without bound. Reads reconcile what they
+   * happen to touch, but a Set that is never read again is never repaired. Giving the Set itself an
+   * expiry derived from the referencing entity bounds that growth unconditionally.
+   *
+   * <p>Grow-only: NX establishes the TTL on a Set that has none (Redis treats "no TTL" as +infinity,
+   * so GT alone would never fire on a freshly created Set), then GT ensures a shorter-lived member
+   * can never shorten a TTL that already covers a longer-lived one. The Set therefore always
+   * outlives its longest-lived member.
+   *
+   * <p>Applied in <em>every</em> mode, unlike the upstream proposal which gates it to cluster. The
+   * leak is not cluster-specific — measured on a standalone deployment, dangling index members were
+   * 78 MB of a 238 MB keyspace (122k client-session parent-index entries pointing at sessions that
+   * no longer existed), alongside 110 MB of auth-session hashes that carried no TTL at all.
+   */
+  private void expireIndexBackstop(Object target, String indexKey, Long expireAtMs) {
+    if (expireAtMs == null || expireAtMs <= 0L) return;
+    log.tracef("[redis] PEXPIREAT %s %s NX/GT", indexKey, expireAtMs);
+    if (target instanceof AbstractTransaction txn) {
+      txn.pexpireAt(indexKey, expireAtMs, ExpiryOption.NX);
+      txn.pexpireAt(indexKey, expireAtMs, ExpiryOption.GT);
+    } else {
+      jedis.pexpireAt(indexKey, expireAtMs, ExpiryOption.NX);
+      jedis.pexpireAt(indexKey, expireAtMs, ExpiryOption.GT);
+    }
+  }
+
   private void addSecondaryIndexes(A model) {
     Map<String, String> indexes = model.getSecondaryIndexes();
     List<Map.Entry<String, String>> validIndexes =
@@ -321,20 +352,30 @@ public class RedisChangelogTransaction<K extends Key, A extends MapEntity<K>>
 
     if (validIndexes.isEmpty()) return;
 
+    Long expireAtMs =
+        model instanceof ExpirableEntity e && e.getExpiration() != null ? e.getExpiration() : null;
+
     if (redisMode != RedisMode.CLUSTER) {
+      // Standalone/sentinel: every key is on one node, so the SADDs (and their expiry backstop)
+      // stay in one MULTI/EXEC.
       try (AbstractTransaction txn = jedis.multi()) {
         for (Map.Entry<String, String> index : validIndexes) {
           log.tracef("[redis] SADD %s %s", index.getKey(), index.getValue());
           txn.sadd(index.getKey(), index.getValue());
           countOperation(SADD);
+          expireIndexBackstop(txn, index.getKey(), expireAtMs);
         }
         txn.exec();
       }
     } else {
+      // Cluster: an index Set and the entity it references hash to different slots, so no MULTI can
+      // span them — each command is issued on its own. See the cluster-consistency contract in the
+      // README: indexes are a self-healing hint, reconciled on read and bounded by this backstop.
       for (Map.Entry<String, String> index : validIndexes) {
         log.tracef("[redis] SADD %s %s", index.getKey(), index.getValue());
         jedis.sadd(index.getKey(), index.getValue());
         countOperation(SADD);
+        expireIndexBackstop(null, index.getKey(), expireAtMs);
       }
     }
   }

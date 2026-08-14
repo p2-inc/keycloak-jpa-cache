@@ -1,6 +1,7 @@
 package io.phasetwo.keycloak.redis.authSession;
 
 import com.google.common.collect.ImmutableMap;
+import io.phasetwo.keycloak.common.ExpirableEntity;
 import io.phasetwo.keycloak.redis.KeyFormat;
 import io.phasetwo.keycloak.redis.MapEntity;
 import java.util.Map;
@@ -16,7 +17,7 @@ import org.keycloak.sessions.RootAuthenticationSessionModel;
 
 @JBossLog
 public class RedisAuthenticationSessionAdapter extends MapEntity<AuthenticationSessionKey>
-    implements AuthenticationSessionModel {
+    implements AuthenticationSessionModel, ExpirableEntity {
 
   private final KeycloakSession session;
 
@@ -66,6 +67,35 @@ public class RedisAuthenticationSessionAdapter extends MapEntity<AuthenticationS
     setField("parentId", parent.getId());
     setField("realmId", parent.getRealm().getId());
     this.parent = parent;
+    // Inherit the root's expiry so this tab is never written without one — see getExpiration().
+    if (parent instanceof ExpirableEntity e) {
+      setExpiration(e.getExpiration());
+    }
+  }
+
+  /**
+   * A per-tab authentication session lives exactly as long as its root, so it carries the root's
+   * expiration and {@link io.phasetwo.keycloak.redis.RedisChangelogTransaction} turns that into a
+   * {@code PEXPIREAT} on the hash.
+   *
+   * <p>Without this the tab is immortal. The root expires by TTL, the delete path never runs, and
+   * both the tab hash and its parent-index member survive every login that ever happened: measured
+   * on a live deployment, 57,419 orphaned tabs holding 110 MB — the single largest consumer in the
+   * keyspace, and unreachable by {@code volatile-lru} precisely because it had no TTL to sort by.
+   *
+   * <p>Kept as a stored field rather than resolved from {@link #getParentSession()} on demand: this
+   * is read during transaction commit, and reaching back into the session factory for the root
+   * there would issue a Redis read from inside a pipeline.
+   */
+  @Override
+  public Long getExpiration() {
+    if (isNull("expiration")) return null;
+    return getLong("expiration", 0L);
+  }
+
+  @Override
+  public void setExpiration(Long expiration) {
+    setField("expiration", expiration);
   }
 
   public void setTimestamp(long timestamp) {

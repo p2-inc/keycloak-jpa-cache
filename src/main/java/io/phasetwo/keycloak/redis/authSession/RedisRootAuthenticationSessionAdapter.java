@@ -189,6 +189,9 @@ public class RedisRootAuthenticationSessionAdapter extends MapEntity<RootAuthent
     setTimestampLong(timestamp);
     long exp = timestamp + TimeAdapter.fromSecondsToMilliseconds(authSessionLifespanSeconds);
     setExpiration(exp);
+    // The tab expires with its root. setParentSession() already inherited whatever expiry the root
+    // carried; this is the authoritative value, computed just above.
+    adapter.setExpiration(exp);
 
     getAuthenticationSessions().put(tabId, adapter);
 
@@ -212,6 +215,13 @@ public class RedisRootAuthenticationSessionAdapter extends MapEntity<RootAuthent
       int authSessionLifespanSeconds = getAuthSessionLifespan(realm);
       long exp = timestamp + TimeAdapter.fromSecondsToMilliseconds(authSessionLifespanSeconds);
       setExpiration(exp);
+      // The root's life just extended; carry that to the tabs that remain, or their hashes would
+      // expire out from under a root that is still live.
+      for (AuthenticationSessionModel remaining : authSessions.values()) {
+        if (remaining instanceof RedisAuthenticationSessionAdapter tab) {
+          tab.setExpiration(exp);
+        }
+      }
     }
   }
 
