@@ -52,6 +52,10 @@ import redis.clients.jedis.UnifiedJedis;
  * expiration and skipped {@code PEXPIREAT} — leaving every {@code auth-session:*} key with no TTL
  * and accumulating unbounded (observed as ~110&nbsp;MB of never-expiring keys on a live
  * deployment). See the discussion on issue&nbsp;#78.
+ *
+ * <p>Runs as {@link RedisMode#CLUSTER}: the index-Set backstop and reap-at-commit are {@code
+ * ClusterRedisChangelogTransaction} behaviours (standalone/sentinel carry none of them). The mode
+ * enum alone selects that transaction, so a standalone container backing the client suffices.
  */
 public class AuthSessionTtlBackstopTest extends KeycloakModelTest {
 
@@ -122,7 +126,7 @@ public class AuthSessionTtlBackstopTest extends KeycloakModelTest {
         (s, realm) -> {
           ClientModel client = realm.getClientByClientId("test-app");
           RedisAuthenticationSessionProvider provider =
-              new RedisAuthenticationSessionProvider(s, jedis, RedisMode.STANDALONE, 300);
+              new RedisAuthenticationSessionProvider(s, jedis, RedisMode.CLUSTER, 300);
           RootAuthenticationSessionModel root = provider.createRootAuthenticationSession(realm);
           AuthenticationSessionModel authSession = root.createAuthenticationSession(client);
           created[0] = client.getId();
@@ -157,7 +161,7 @@ public class AuthSessionTtlBackstopTest extends KeycloakModelTest {
         (s, realm) -> {
           ClientModel client = realm.getClientByClientId("test-app");
           RedisAuthenticationSessionProvider provider =
-              new RedisAuthenticationSessionProvider(s, jedis, RedisMode.STANDALONE, 300);
+              new RedisAuthenticationSessionProvider(s, jedis, RedisMode.CLUSTER, 300);
           RootAuthenticationSessionModel root = provider.createRootAuthenticationSession(realm);
           root.createAuthenticationSession(client); // the tab we will remove
           AuthenticationSessionModel survivor = root.createAuthenticationSession(client);
@@ -180,7 +184,7 @@ public class AuthSessionTtlBackstopTest extends KeycloakModelTest {
           realmId,
           (s, realm) -> {
             RedisAuthenticationSessionProvider provider =
-                new RedisAuthenticationSessionProvider(s, jedis, RedisMode.STANDALONE, 300);
+                new RedisAuthenticationSessionProvider(s, jedis, RedisMode.CLUSTER, 300);
             RootAuthenticationSessionModel root =
                 provider.getRootAuthenticationSession(realm, ctx[0]);
             // Remove the OTHER tab, leaving the survivor; this bumps the root's horizon.
@@ -222,7 +226,7 @@ public class AuthSessionTtlBackstopTest extends KeycloakModelTest {
             (s, realm) -> {
               ClientModel client = realm.getClientByClientId("test-app");
               RedisAuthenticationSessionProvider provider =
-                  new RedisAuthenticationSessionProvider(s, jedis, RedisMode.STANDALONE, 300);
+                  new RedisAuthenticationSessionProvider(s, jedis, RedisMode.CLUSTER, 300);
               RootAuthenticationSessionModel root = provider.createRootAuthenticationSession(realm);
               root.createAuthenticationSession(client);
               return root.getId();
@@ -241,7 +245,7 @@ public class AuthSessionTtlBackstopTest extends KeycloakModelTest {
           realmId,
           (s, realm) -> {
             RedisAuthenticationSessionProvider provider =
-                new RedisAuthenticationSessionProvider(s, jedis, RedisMode.STANDALONE, 300);
+                new RedisAuthenticationSessionProvider(s, jedis, RedisMode.CLUSTER, 300);
             RootAuthenticationSessionModel root =
                 provider.getRootAuthenticationSession(realm, rootId);
             root.restartSession(realm);
@@ -278,7 +282,7 @@ public class AuthSessionTtlBackstopTest extends KeycloakModelTest {
         (s, realm) -> {
           ClientModel client = realm.getClientByClientId("test-app");
           RedisAuthenticationSessionProvider provider =
-              new RedisAuthenticationSessionProvider(s, jedis, RedisMode.STANDALONE, 300);
+              new RedisAuthenticationSessionProvider(s, jedis, RedisMode.CLUSTER, 300);
           RootAuthenticationSessionModel root = provider.createRootAuthenticationSession(realm);
           AuthenticationSessionModel tabA = root.createAuthenticationSession(client);
           ctx[0] = root.getId();
@@ -301,7 +305,7 @@ public class AuthSessionTtlBackstopTest extends KeycloakModelTest {
           (s, realm) -> {
             ClientModel client = realm.getClientByClientId("test-app");
             RedisAuthenticationSessionProvider provider =
-                new RedisAuthenticationSessionProvider(s, jedis, RedisMode.STANDALONE, 300);
+                new RedisAuthenticationSessionProvider(s, jedis, RedisMode.CLUSTER, 300);
             RootAuthenticationSessionModel root =
                 provider.getRootAuthenticationSession(realm, ctx[0]);
             root.createAuthenticationSession(client); // tab B — must re-stamp tab A too
@@ -333,7 +337,7 @@ public class AuthSessionTtlBackstopTest extends KeycloakModelTest {
             (s, realm) -> {
               ClientModel client = realm.getClientByClientId("test-app");
               RedisAuthenticationSessionProvider provider =
-                  new RedisAuthenticationSessionProvider(s, jedis, RedisMode.STANDALONE, 300);
+                  new RedisAuthenticationSessionProvider(s, jedis, RedisMode.CLUSTER, 300);
               RootAuthenticationSessionModel root = provider.createRootAuthenticationSession(realm);
               root.createAuthenticationSession(client);
               return root.getId();
@@ -349,7 +353,7 @@ public class AuthSessionTtlBackstopTest extends KeycloakModelTest {
         realmId,
         (s, realm) -> {
           RedisAuthenticationSessionProvider provider =
-              new RedisAuthenticationSessionProvider(s, jedis, RedisMode.STANDALONE, 300);
+              new RedisAuthenticationSessionProvider(s, jedis, RedisMode.CLUSTER, 300);
           RootAuthenticationSessionModel root =
               provider.getRootAuthenticationSession(realm, rootId);
           root.getAuthenticationSessions(); // drives the parent-index read → schedules the reap

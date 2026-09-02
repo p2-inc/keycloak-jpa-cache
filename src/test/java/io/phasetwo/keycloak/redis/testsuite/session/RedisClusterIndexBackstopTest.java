@@ -50,21 +50,22 @@ import redis.clients.jedis.RedisClient;
 import redis.clients.jedis.UnifiedJedis;
 
 /**
- * Eventual-consistency backstop tests for the <b>non-cluster</b> modes (issue&nbsp;#78).
+ * Eventual-consistency backstop tests for {@link RedisMode#CLUSTER} (issue&nbsp;#78).
  *
- * <p>The index-growth leak this feature closes is <em>not</em> cluster-specific: when a session
- * hash expires by native TTL it never goes through the explicit delete path, so the secondary-index
- * members it left behind survive in every mode — standalone included (confirmed on a live
- * single-node deployment). {@code MULTI}/{@code EXEC} atomicity, which standalone/sentinel keep,
- * was never what leaked. So the TTL backstop and the read-driven reconciliation both apply in all
- * modes; {@code redisMode} only decides <em>how</em> the writes are issued (batched in a {@code
- * MULTI} for standalone/sentinel, per-key for cluster), never <em>whether</em> they happen.
+ * <p>In cluster mode an entity key and its index Sets hash to different slots, so a {@code MULTI}
+ * spanning them is impossible and every command is issued on its own. That leaves gaps in which an
+ * index Set can hold a member whose entity is gone — a crash between {@code DEL} and {@code SREM},
+ * or a session hash that TTL-expires without ever going through the explicit delete path. {@code
+ * ClusterRedisChangelogTransaction} therefore carries a TTL backstop on every index Set plus
+ * read-driven reconciliation (reap of dangling members and TTL extension for live ones, both
+ * deferred to commit). Standalone/sentinel keep {@code MULTI}/{@code EXEC} index maintenance and
+ * none of this machinery.
  *
- * <p>Both {@link RedisMode#STANDALONE} and {@link RedisMode#SENTINEL} take the same {@code
- * redisMode != CLUSTER} branch, so one standalone Valkey node exercises both — the mode enum alone
- * selects the branch. Cluster-mode equivalents live in {@code RedisClusterIndexReconciliationTest}.
+ * <p>The mode enum alone selects the transaction, so a single standalone Valkey node is enough to
+ * exercise the cluster transaction's behaviour here; the real cluster-client wiring (a {@code
+ * ClusterPipeline}, per-slot routing) is covered by {@code RedisClusterIndexReconciliationTest}.
  */
-public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
+public class RedisClusterIndexBackstopTest extends KeycloakModelTest {
 
   private static GenericContainer<?> container;
   private static UnifiedJedis jedis;
@@ -107,7 +108,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
 
   @Override
   public void createEnvironment(KeycloakSession s) {
-    RealmModel realm = createRealm(s, "test-backstop-all-modes");
+    RealmModel realm = createRealm(s, "test-cluster-backstop");
     s.getContext().setRealm(realm);
 
     realm.setOfflineSessionIdleTimeout(Constants.DEFAULT_OFFLINE_SESSION_IDLE_TIMEOUT);
@@ -134,19 +135,14 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
   }
 
   @Test
-  public void standaloneWritesTtlBackstopOnIndexSet() {
-    assertTtlBackstopWritten(RedisMode.STANDALONE);
-  }
-
-  @Test
-  public void sentinelWritesTtlBackstopOnIndexSet() {
-    assertTtlBackstopWritten(RedisMode.SENTINEL);
+  public void writesTtlBackstopOnIndexSet() {
+    assertTtlBackstopWritten(RedisMode.CLUSTER);
   }
 
   /**
-   * In a non-cluster mode the index Set written by the provider carries a positive TTL backstop
-   * derived from the referencing session's expiration, so dangling members cannot accumulate
-   * unbounded even for Sets that reads never revisit.
+   * The index Set written by the provider carries a positive TTL backstop derived from the
+   * referencing session's expiration, so dangling members cannot accumulate unbounded even for Sets
+   * that reads never revisit.
    */
   private void assertTtlBackstopWritten(RedisMode mode) {
     String userId =
@@ -165,25 +161,20 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
 
     long pttl = ClusterTestSupport.pttl(jedis, indexKey);
     assertThat(
-        "non-cluster index Set must carry a positive TTL backstop (" + mode + ", was " + pttl + ")",
+        "index Set must carry a positive TTL backstop (" + mode + ", was " + pttl + ")",
         pttl > 0L,
         is(true));
   }
 
   @Test
-  public void standaloneReapsDanglingMemberAtCommitNotMidRead() {
-    assertReapsAtCommit(RedisMode.STANDALONE);
-  }
-
-  @Test
-  public void sentinelReapsDanglingMemberAtCommit() {
-    assertReapsAtCommit(RedisMode.SENTINEL);
+  public void reapsDanglingMemberAtCommitNotMidRead() {
+    assertReapsAtCommit(RedisMode.CLUSTER);
   }
 
   /**
-   * A by-index read that encounters a dangling member self-reconciles in every mode — but the reap
-   * is deferred to transaction commit, never issued on the read path (the "no Redis writes outside
-   * {@code commitImpl}" discipline). Proven by inspecting the Set both <em>during</em> the read
+   * A by-index read that encounters a dangling member self-reconciles — but the reap is deferred to
+   * transaction commit, never issued on the read path (the "no Redis writes outside {@code
+   * commitImpl}" discipline). Proven by inspecting the Set both <em>during</em> the read
    * transaction (member still present) and <em>after</em> it commits (member gone).
    */
   private void assertReapsAtCommit(RedisMode mode) {
@@ -234,7 +225,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             (s, realm) -> {
               UserModel user = s.users().getUserByUsername(realm, "user1");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               provider.createUserSession(
                   realm, user, "user1", "127.0.0.1", "form", true, null, null);
               return user.getId();
@@ -250,7 +241,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
         (s, realm) -> {
           UserModel user = s.users().getUserByUsername(realm, "user1");
           RedisUserSessionProvider provider =
-              new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+              new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
           // The read registers a reap for the dangling member ...
           assertThat(provider.getUserSessionsStream(realm, user).count(), is(0L));
           // ... but before this transaction commits, a concurrent write re-creates the entity
@@ -276,7 +267,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             (s, realm) -> {
               UserModel user = s.users().getUserByUsername(realm, "user1");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               provider.createUserSession(
                   realm, user, "user1", "127.0.0.1", "form", true, null, null);
               provider.createUserSession(
@@ -298,7 +289,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             (s, realm) -> {
               UserModel user = s.users().getUserByUsername(realm, "user1");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               return provider
                   .getUserSessionsStream(realm, user)
                   .map(UserSessionModel::getId)
@@ -320,14 +311,14 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
   }
 
   @Test
-  public void standaloneIndexTtlBackstopIsGrowOnly() {
+  public void indexTtlBackstopIsGrowOnly() {
     String userId =
         withRealm(
             realmId,
             (s, realm) -> {
               UserModel user = s.users().getUserByUsername(realm, "user1");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               provider.createUserSession(
                   realm, user, "user1", "127.0.0.1", "form", true, null, null);
               return user.getId();
@@ -345,7 +336,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
         (s, realm) -> {
           UserModel user = s.users().getUserByUsername(realm, "user1");
           RedisUserSessionProvider provider =
-              new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+              new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
           provider.createUserSession(realm, user, "user1", "127.0.0.1", "form", true, null, null);
           return null;
         });
@@ -353,7 +344,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
     long after = ClusterTestSupport.pttl(jedis, indexKey);
     long twentyFiveDaysMs = 25L * 24 * 60 * 60 * 1000;
     assertThat(
-        "non-cluster index TTL must not shrink below a longer-lived member (GT); was " + after,
+        "index TTL must not shrink below a longer-lived member (GT); was " + after,
         after > twentyFiveDaysMs,
         is(true));
   }
@@ -366,7 +357,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             (s, realm) -> {
               UserModel user = s.users().getUserByUsername(realm, "user1");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               provider.createUserSession(
                   realm, user, "user1", "127.0.0.1", "form", true, null, null);
               return user.getId();
@@ -384,7 +375,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
         (s, realm) -> {
           UserModel user = s.users().getUserByUsername(realm, "user1");
           RedisUserSessionProvider provider =
-              new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+              new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
           provider.getUserSessionsStream(realm, user).count(); // registers reap for the member
           provider.createUserSession(
               sessionId,
@@ -408,7 +399,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
   }
 
   @Test
-  public void clientIndexMemberReapedAtCommitNonCluster() {
+  public void clientIndexMemberReapedAtCommit() {
     String clientUuid =
         withRealm(realmId, (s, realm) -> realm.getClientByClientId("test-app").getId());
     String indexKey = ClusterTestSupport.clientIndexKey(clientUuid);
@@ -421,7 +412,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
         (s, realm) -> {
           ClientModel client = realm.getClientByClientId("test-app");
           RedisUserSessionProvider provider =
-              new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+              new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
           assertThat(provider.getUserSessionsStream(realm, client).count(), is(0L));
           return null;
         });
@@ -430,14 +421,14 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
   }
 
   @Test
-  public void parentIndexMemberReapedAtCommitNonCluster() {
+  public void parentIndexMemberReapedAtCommit() {
     String userSessionId =
         withRealm(
             realmId,
             (s, realm) -> {
               UserModel user = s.users().getUserByUsername(realm, "user1");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               return provider
                   .createUserSession(realm, user, "user1", "127.0.0.1", "form", true, null, null)
                   .getId();
@@ -451,7 +442,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
         realmId,
         (s, realm) -> {
           RedisUserSessionProvider provider =
-              new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+              new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
           UserSessionModel userSession = provider.getUserSession(realm, userSessionId);
           assertThat(userSession.getAuthenticatedClientSessions().size(), is(0));
           return null;
@@ -468,7 +459,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             (s, realm) -> {
               UserModel user = s.users().getUserByUsername(realm, "user1");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               UserSessionModel us =
                   provider.createUserSession(
                       realm, user, "user1", "127.0.0.1", "form", true, null, null);
@@ -518,7 +509,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             (s, realm) -> {
               ClientModel client = realm.getClientByClientId("test-app");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               // Must not NPE when a resolved client session's parent user session is null.
               return provider.getOfflineSessionsCount(realm, client);
             });
@@ -540,7 +531,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             (s, realm) -> {
               UserModel user = s.users().getUserByUsername(realm, "user1");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               provider.createUserSession(
                   realm, user, "user1", "127.0.0.1", "form", true, null, null);
               provider.createUserSession(
@@ -564,7 +555,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             realmId,
             (s, realm) -> {
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               try {
                 java.lang.reflect.Method m =
                     RedisUserSessionProvider.class.getDeclaredMethod(
@@ -597,7 +588,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
    * A shared index Set's TTL backstop is derived from whichever session's write last stamped it, so
    * a longer-lived member that is never re-written can be left under a TTL that expires before it
    * does — dropping a live session from the index. A by-index read sees the live member and must
-   * grow the Set TTL ({@code GT}) to cover its expiration, in every mode (issue&nbsp;#78, review
+   * grow the Set TTL ({@code GT}) to cover its expiration (issue&nbsp;#78, review
    * finding A).
    */
   @Test
@@ -608,7 +599,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             (s, realm) -> {
               UserModel user = s.users().getUserByUsername(realm, "user1");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               provider.createUserSession(
                   realm, user, "user1", "127.0.0.1", "form", true, null, null);
               return user.getId();
@@ -626,7 +617,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
         (s, realm) -> {
           UserModel user = s.users().getUserByUsername(realm, "user1");
           RedisUserSessionProvider provider =
-              new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+              new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
           assertThat(provider.getUserSessionsStream(realm, user).count(), is(1L));
           return null;
         });
@@ -670,7 +661,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
         (s, realm) -> {
           UserModel user = s.users().getUserByUsername(realm, "user1");
           RedisUserSessionProvider provider =
-              new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+              new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
           assertThat(provider.getUserSessionsStream(realm, user).count(), is(1L));
           return null;
         });
@@ -717,7 +708,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
         (s, realm) -> {
           ClientModel client = realm.getClientByClientId("test-app");
           RedisUserSessionProvider provider =
-              new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+              new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
           provider.getUserSessionsStream(realm, client).count(); // drives client-index read
           return null;
         });
@@ -771,7 +762,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             (s, realm) -> {
               UserModel user = s.users().getUserByUsername(realm, "user1");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               return provider
                   .createUserSession(realm, user, "user1", "127.0.0.1", "form", true, null, null)
                   .getId();
@@ -803,7 +794,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
         realmId,
         (s, realm) -> {
           RedisUserSessionProvider provider =
-              new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+              new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
           UserSessionModel userSession = provider.getUserSession(realm, userSessionId);
           userSession.getAuthenticatedClientSessions(); // drives the parent-index read
           return null;
@@ -833,7 +824,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             (s, realm) -> {
               UserModel user = s.users().getUserByUsername(realm, "user1");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               provider.createUserSession(
                   realm, user, "user1", "127.0.0.1", "form", true, null, null);
               return user.getId();
@@ -847,7 +838,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
                 UserModel user = s.users().getUserByUsername(realm, "user1");
                 // One provider instance => one shared transaction cache across both reads.
                 RedisUserSessionProvider provider =
-                    new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                    new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
 
                 // First read caches the (still-valid) session in the transaction.
                 assertThat(provider.getUserSessionsStream(realm, user).count(), is(1L));
@@ -912,7 +903,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
         (s, realm) -> {
           UserModel user = s.users().getUserByUsername(realm, "user1");
           RedisUserSessionProvider provider =
-              new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+              new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
           // Read resolves the live member and schedules extendIndexTtlOnCommit(indexKey,
           // memberExpMs).
           assertThat(provider.getUserSessionsStream(realm, user).count(), is(1L));
@@ -950,7 +941,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             (s, realm) -> {
               UserModel user = s.users().getUserByUsername(realm, "user1");
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               return provider
                   .createUserSession(realm, user, "user1", "127.0.0.1", "form", true, null, null)
                   .getId();
@@ -980,7 +971,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
             realmId,
             (s, realm) -> {
               RedisUserSessionProvider provider =
-                  new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+                  new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
               UserSessionModel us = provider.getUserSession(realm, userSessionId);
               // Must not NPE when a live client session's parent user session is null.
               return us.getAuthenticatedClientSessions().size();
@@ -1011,7 +1002,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
         (s, realm) -> {
           UserModel user = s.users().getUserByUsername(realm, "user1");
           RedisUserSessionProvider provider =
-              new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+              new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
           provider.createUserSession(realm, user, "user1", "127.0.0.1", "form", true, null, null);
           return null;
         });
@@ -1030,7 +1021,7 @@ public class RedisIndexBackstopAllModesTest extends KeycloakModelTest {
         (s, realm) -> {
           UserModel user = s.users().getUserByUsername(realm, "user1");
           RedisUserSessionProvider provider =
-              new RedisUserSessionProvider(s, jedis, RedisMode.STANDALONE);
+              new RedisUserSessionProvider(s, jedis, RedisMode.CLUSTER);
           provider.createUserSession(realm, user, "user1", "127.0.0.1", "form", true, null, null);
           return null;
         });

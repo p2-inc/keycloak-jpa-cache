@@ -22,7 +22,7 @@ public class RedisSingleUseObjectProvider implements SingleUseObjectProvider {
     this.jedis = jedis;
     this.session = session;
     this.suoTrx =
-        new RedisChangelogTransaction<>(
+        RedisChangelogTransaction.create(
             "singleUseObject",
             jedis,
             redisMode,

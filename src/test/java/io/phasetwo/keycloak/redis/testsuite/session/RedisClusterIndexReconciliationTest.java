@@ -50,9 +50,10 @@ import redis.clients.jedis.UnifiedJedis;
  *
  * <p>The feature makes reads <em>self-reconciling</em>: when a by-index lookup encounters a member
  * that resolves to no entity, it registers that member to be {@code SREM}'d from the Set it was
- * read from when the transaction commits (never on the read path itself). Reconciliation runs in
- * every mode; the all-mode / deferred-reap behavior is covered by {@code
- * RedisIndexBackstopAllModesTest}. These tests verify the cluster wiring end-to-end, where the reap
+ * read from when the transaction commits (never on the read path itself). Reconciliation is a
+ * {@code ClusterRedisChangelogTransaction} concern: standalone/sentinel keep {@code MULTI}/{@code
+ * EXEC} index maintenance and carry none of it (the mode-neutral read-path behaviour lives in
+ * {@code RedisIndexReadPathTest}). These tests verify the cluster wiring end-to-end, where the reap
  * is issued per-key because a cross-slot MULTI is impossible.
  *
  * <p>Runs against a real cluster-mode Jedis client via {@link ClusterTestSupport}.

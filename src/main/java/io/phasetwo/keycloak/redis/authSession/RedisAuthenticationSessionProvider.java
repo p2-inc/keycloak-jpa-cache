@@ -40,13 +40,13 @@ public class RedisAuthenticationSessionProvider implements AuthenticationSession
     this.authSessionsLimit = authSessionsLimit;
 
     this.authSessionTrx =
-        new RedisChangelogTransaction<>(
+        RedisChangelogTransaction.create(
             "authSession",
             jedis,
             redisMode,
             new AuthenticationSessionAdapterSupplier(session, jedis));
     this.rootSessionTrx =
-        new RedisChangelogTransaction<>(
+        RedisChangelogTransaction.create(
             "rootAuthSession",
             jedis,
             redisMode,

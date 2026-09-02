@@ -23,7 +23,7 @@ public class RedisUserLoginFailureProvider implements UserLoginFailureProvider {
     this.jedis = jedis;
     this.session = session;
     this.loginFailureTrx =
-        new RedisChangelogTransaction<>(
+        RedisChangelogTransaction.create(
             "loginFailure", jedis, redisMode, new UserLoginFailureAdapterSupplier(session, jedis));
     session.getTransactionManager().enlistAfterCompletion(loginFailureTrx);
   }

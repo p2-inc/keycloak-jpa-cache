@@ -49,13 +49,13 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     this.jedis = jedis;
 
     this.clientSessionTrx =
-        new RedisChangelogTransaction<>(
+        RedisChangelogTransaction.create(
             "clientSession",
             jedis,
             redisMode,
             new AuthenticatedClientSessionAdapterSupplier(session, jedis));
     this.userSessionTrx =
-        new RedisChangelogTransaction<>(
+        RedisChangelogTransaction.create(
             "userSession",
             jedis,
             redisMode,
