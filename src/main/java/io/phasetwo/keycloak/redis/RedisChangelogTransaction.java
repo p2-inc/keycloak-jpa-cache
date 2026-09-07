@@ -15,6 +15,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.jbosslog.JBossLog;
 import org.keycloak.models.AbstractKeycloakTransaction;
 import redis.clients.jedis.AbstractPipeline;
@@ -49,7 +50,31 @@ public abstract class RedisChangelogTransaction<K extends Key, A extends MapEnti
   protected final UnifiedJedis jedis;
   private final String cacheName;
   private final Meter.MeterProvider<Counter> counterProvider;
-  private static final int MAX_CAS_RETRIES = 3;
+
+  /**
+   * How many times a CAS write for a single key is retried before giving up (in addition to the
+   * first attempt, so a key can be written up to {@code MAX_CAS_RETRIES + 1} times per commit).
+   * Keycloak legitimately performs concurrent writes to the same key (multi-tab login, refresh
+   * storms), and optimistic locks can contend a lot before they converge. With no retry headroom a
+   * moderate write storm would exhaust the budget and fail the request (issue #82). 12 retries is a
+   * healthy margin that stays within a request's latency budget: each wait is a jittered backoff
+   * whose exponential term is capped at {@link #CAS_RETRY_BACKOFF_MAX_MS}, so even a fully
+   * contended key blocks the calling thread for well under a second before failing (up to ~0.5s of
+   * sleeps on the full-exhaustion path, plus the per-attempt rebase round-trips; see {@link
+   * #sleepBetweenCasRetries}).
+   */
+  private static final int MAX_CAS_RETRIES = 12;
+
+  /** Base backoff (ms) between CAS retries, doubled per attempt and jittered. */
+  private static final long CAS_RETRY_BACKOFF_BASE_MS = 5L;
+
+  /**
+   * Cap (ms) for the exponential term of the CAS retry backoff, so the growing wait cannot stall a
+   * request. The jitter is applied on top and left uncapped (keeping the wait varying once the
+   * exponential saturates), so the actual per-wait delay never exceeds roughly {@code MAX + BASE}
+   * ms.
+   */
+  private static final long CAS_RETRY_BACKOFF_MAX_MS = 50L;
 
   protected RedisChangelogTransaction(
       String cacheName, UnifiedJedis jedis, AdapterSupplier<K, A> adapterSupplier) {
@@ -336,15 +361,55 @@ public abstract class RedisChangelogTransaction<K extends Key, A extends MapEnti
         return;
       }
 
-      log.warnf("[redis] CAS hsetex returned non-success code %s. %s", code, invocation);
-      if ((code != 0L && code != -1L) || attempt == MAX_CAS_RETRIES) {
+      boolean fatal = (code != 0L && code != -1L) || attempt == MAX_CAS_RETRIES;
+      if (fatal) {
+        log.warnf("[redis] CAS hsetex returned non-success code %s. %s", code, invocation);
         throw new IllegalStateException(
             String.format(
                 "Redis CAS failed for key %s after %d attempts with code %d",
                 attemptModel.getKey().key(), attempt + 1, code));
       }
 
+      // Retryable CAS mismatch: with the raised budget this is a normal, expected turn of events
+      // under same-key contention (issue #82), so keep it at TRACE to avoid WARN spam on every
+      // retried (yet eventually successful) write. Log at WARN only when the budget is exhausted.
+      log.tracef(
+          "[redis] CAS hsetex retryable code %s on attempt %d. %s", code, attempt, invocation);
+
+      // Spread concurrent writers to the same key in time so their optimistic-lock retries converge
+      // instead of colliding every attempt (issue #82). Slept before rebasing/replaying for the
+      // next attempt; a jittered, capped exponential backoff keeps the worst-case wait small.
+      sleepBetweenCasRetries(attempt);
       attemptModel = rebaseModel(originalModel);
+    }
+  }
+
+  /**
+   * Jittered, capped exponential backoff between CAS retries. Each retry is a local decision
+   * independent of the other writers, so a random offset is what actually breaks the lockstep that
+   * makes same-key optimistic locks fail in a tight burst.
+   *
+   * <p>The delay grows with the attempt ({@code ~BASE * 2^attempt}). Only the exponential term is
+   * capped at {@link #CAS_RETRY_BACKOFF_MAX_MS}; the jitter ({@code [0, BASE]}) is applied on top
+   * and deliberately left uncapped, so once the exponential saturates at the cap the wait keeps
+   * varying (e.g. 50–55ms at the plateau) rather than collapsing to a constant that would let
+   * concurrent writers re-align in lockstep. Never sleeps for the first, immediate retry ({@code
+   * attempt == 0}) so uncontended writes are not slowed down at all.
+   */
+  private void sleepBetweenCasRetries(int attempt) {
+    if (attempt < 1) return;
+    long exponential = CAS_RETRY_BACKOFF_BASE_MS << Math.min(attempt, 4);
+    long capped = Math.min(exponential, CAS_RETRY_BACKOFF_MAX_MS);
+    long jitter = ThreadLocalRandom.current().nextLong(0, CAS_RETRY_BACKOFF_BASE_MS + 1);
+    long delay = capped + jitter;
+    try {
+      Thread.sleep(delay);
+    } catch (InterruptedException e) {
+      // Retries are not meant to be cancelled: restore the interrupt flag for the caller to
+      // observe, but keep retrying instead of aborting the CAS write. Swallow rather than log
+      // here — an already-interrupted thread makes every subsequent Thread.sleep throw and would
+      // spam the log; the loop will still converge or exhaust the budget normally.
+      Thread.currentThread().interrupt();
     }
   }
 

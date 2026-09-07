@@ -24,8 +24,14 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.startsWith;
 
 import io.phasetwo.keycloak.redis.testsuite.KeycloakModelTest;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import org.junit.Test;
@@ -140,6 +146,90 @@ public class UserSessionConcurrencyTest extends KeycloakModelTest {
           RealmModel realm = session.realms().getRealm(realmId);
           session.getContext().setRealm(realm);
           session.realms().removeRealm(realmId);
+        });
+  }
+
+  /**
+   * Regression for issue #82: many writers targeting the <em>same</em> key concurrently must
+   * converge instead of exhausting the Redis CAS retry budget. Each writer opens its own committed
+   * transaction, reads the same client session at base version N, then writes a distinct note — so
+   * their CAS writes collide. With a fixed budget of 4 attempts and no backoff, the tail writer
+   * throws {@link IllegalStateException} ("Redis CAS failed ... after 4 attempts"). A higher,
+   * backoff-tolerant retry budget lets all writers converge.
+   */
+  @Test
+  public void testConcurrentSameKeyCasWritesConverge() throws Exception {
+    int writers = 12;
+
+    String userSessionId =
+        withRealm(
+                this.realmId,
+                (session, realm) -> {
+                  UserSessionModel userSession =
+                      session
+                          .sessions()
+                          .createUserSession(
+                              realm,
+                              session.users().getUserByUsername(realm, "user1"),
+                              "user1",
+                              "127.0.0.1",
+                              "form",
+                              true,
+                              null,
+                              null);
+                  ClientModel client = realm.getClientByClientId("client0");
+                  session.sessions().createClientSession(realm, client, userSession);
+                  return userSession.getId();
+                })
+            .toString();
+
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService executor = Executors.newFixedThreadPool(writers);
+    List<Future<Void>> futures = new ArrayList<>();
+    for (int w = 0; w < writers; w++) {
+      final int n = w;
+      futures.add(
+          executor.submit(
+              (Callable<Void>)
+                  () -> {
+                    start.await(10, TimeUnit.SECONDS);
+                    withRealm(
+                        realmId,
+                        (session, realm) -> {
+                          ClientModel client = realm.getClientByClientId("client0");
+                          UserSessionModel userSession =
+                              session.sessions().getUserSession(realm, userSessionId);
+                          AuthenticatedClientSessionModel clientSession =
+                              userSession.getAuthenticatedClientSessionByClient(client.getId());
+                          clientSession.setNote("note-" + n, "n" + n);
+                          return null;
+                        });
+                    return null;
+                  }));
+    }
+
+    start.countDown();
+    try {
+      for (Future<Void> f : futures) {
+        // A failing writer surfaces here if the underlying transaction throws; the note
+        // assertions below are the authoritative check that every write landed.
+        f.get(30, TimeUnit.SECONDS);
+      }
+    } finally {
+      executor.shutdown();
+    }
+
+    withRealm(
+        this.realmId,
+        (session, realm) -> {
+          UserSessionModel userSession = session.sessions().getUserSession(realm, userSessionId);
+          AuthenticatedClientSessionModel clientSession =
+              userSession.getAuthenticatedClientSessionByClient(
+                  realm.getClientByClientId("client0").getId());
+          for (int n = 0; n < writers; n++) {
+            assertThat(clientSession.getNote("note-" + n), is("n" + n));
+          }
+          return null;
         });
   }
 
