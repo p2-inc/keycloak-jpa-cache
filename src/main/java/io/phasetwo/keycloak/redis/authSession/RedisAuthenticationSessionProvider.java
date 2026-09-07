@@ -163,7 +163,10 @@ public class RedisAuthenticationSessionProvider implements AuthenticationSession
           .map(authSessionTrx::getIfPresent)
           .filter(Objects::nonNull)
           .filter(c -> c.getTabId().equals(compoundId.getTabId()))
-          .filter(c -> c.getClient().getId().equals(compoundId.getClientUUID()))
+          // Compare the stored client uuid rather than resolving the client: auth sessions outlive
+          // their client (onClientRemoved is a deliberate no-op above), so getClient() returns null
+          // for a deleted client and dereferencing it NPEs the whole update (issue #81).
+          .filter(c -> Objects.equals(c.getClientUuid(), compoundId.getClientUUID()))
           .findFirst()
           .ifPresent(
               authenticationSession -> authenticationSession.setAuthNotes(authNotesFragment));

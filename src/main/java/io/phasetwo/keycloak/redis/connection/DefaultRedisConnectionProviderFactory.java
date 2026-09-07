@@ -237,7 +237,7 @@ public class DefaultRedisConnectionProviderFactory
       return RedisSentinelClient.builder()
           .masterName(masterName)
           .sentinels(nodes)
-         // .sentinelClientConfig(clientConfig)
+          // .sentinelClientConfig(clientConfig)
           .clientConfig(clientConfig)
           // .poolConfig(poolConfig)
           .build();

@@ -588,8 +588,7 @@ public class RedisClusterIndexBackstopTest extends KeycloakModelTest {
    * A shared index Set's TTL backstop is derived from whichever session's write last stamped it, so
    * a longer-lived member that is never re-written can be left under a TTL that expires before it
    * does — dropping a live session from the index. A by-index read sees the live member and must
-   * grow the Set TTL ({@code GT}) to cover its expiration (issue&nbsp;#78, review
-   * finding A).
+   * grow the Set TTL ({@code GT}) to cover its expiration (issue&nbsp;#78, review finding A).
    */
   @Test
   public void readGrowsUserIndexTtlToCoverLongerLivedLiveMember() {

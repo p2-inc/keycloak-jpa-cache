@@ -26,6 +26,7 @@ import static org.junit.Assert.assertNull;
 
 import io.phasetwo.keycloak.redis.testsuite.KeycloakModelTest;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -36,6 +37,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.keycloak.common.util.Time;
 import org.keycloak.models.*;
+import org.keycloak.sessions.AuthenticationSessionCompoundId;
 import org.keycloak.sessions.AuthenticationSessionModel;
 import org.keycloak.sessions.CommonClientSessionModel;
 import org.keycloak.sessions.RootAuthenticationSessionModel;
@@ -65,6 +67,45 @@ public class AuthenticationSessionTest extends KeycloakModelTest {
     s.getContext().setRealm(realm);
 
     s.realms().removeRealm(realmId);
+  }
+
+  /**
+   * Regression for issue #81: {@code updateNonlocalSessionAuthNotes} filters candidate auth
+   * sessions with {@code c.getClient().getId()}. {@code getClient()} resolves to {@code null} once
+   * the client has been deleted — {@code onClientRemoved} is a deliberate no-op here, so auth
+   * sessions outlive their client — and the unguarded dereference then NPEs the whole update.
+   */
+  @Test
+  public void testUpdateNonlocalSessionAuthNotesWithDeletedClientDoesNotThrow() {
+    String clientUuid =
+        withRealm(realmId, (s, realm) -> realm.getClientByClientId("test-app").getId());
+
+    AuthenticationSessionCompoundId compoundId =
+        withRealm(
+            realmId,
+            (session, realm) -> {
+              RootAuthenticationSessionModel root =
+                  session.authenticationSessions().createRootAuthenticationSession(realm);
+              return AuthenticationSessionCompoundId.fromAuthSession(
+                  root.createAuthenticationSession(realm.getClientById(clientUuid)));
+            });
+
+    withRealm(
+        realmId,
+        (session, realm) -> {
+          realm.removeClient(clientUuid);
+          return null;
+        });
+
+    withRealm(
+        realmId,
+        (session, realm) -> {
+          // Must not NPE just because the auth session outlived its client.
+          session
+              .authenticationSessions()
+              .updateNonlocalSessionAuthNotes(compoundId, Map.of("note", "value"));
+          return null;
+        });
   }
 
   @Test

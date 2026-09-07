@@ -21,16 +21,29 @@ import io.phasetwo.keycloak.common.TimeAdapter;
 import io.phasetwo.keycloak.redis.userSession.RedisAuthenticatedClientSessionAdapter;
 import io.phasetwo.keycloak.redis.userSession.RedisUserSessionAdapter;
 import org.keycloak.common.util.Time;
+import org.keycloak.models.AuthenticatedClientSessionModel;
 import org.keycloak.models.ClientModel;
 import org.keycloak.protocol.oidc.OIDCConfigAttributes;
 
 public class RedisSessionExpiration {
+  /**
+   * @param client the client this session belongs to, or {@code null} when it has been deleted. The
+   *     client only ever supplies per-client <em>overrides</em> of the realm defaults, so a missing
+   *     client means "no overrides" — not "no expiration". Skipping the write instead would strand
+   *     the hash without a Redis TTL (issue #81).
+   */
   public static void setClientSessionExpiration(
       RedisAuthenticatedClientSessionAdapter entity,
       SessionExpirationData expirationData,
       ClientModel client,
       Boolean offline) {
     long timestampMillis = entity.getTimestamp() * 1000L;
+    // The remember-me lifespans belong to remember-me logins only. setUserSessionExpiration()
+    // checks this; without the same check here every client session on a realm with remember-me
+    // timeouts configured outlives its parent user session and becomes an orphan (issue #81).
+    boolean rememberMe =
+        Boolean.parseBoolean(
+            entity.getNote(AuthenticatedClientSessionModel.USER_SESSION_REMEMBER_ME_NOTE));
     if (Boolean.TRUE.equals(offline)) {
       long sessionExpires =
           timestampMillis
@@ -44,7 +57,7 @@ public class RedisSessionExpiration {
 
         long clientOfflineSessionMaxLifespan;
         String clientOfflineSessionMaxLifespanPerClient =
-            client.getAttribute(OIDCConfigAttributes.CLIENT_OFFLINE_SESSION_MAX_LIFESPAN);
+            clientAttribute(client, OIDCConfigAttributes.CLIENT_OFFLINE_SESSION_MAX_LIFESPAN);
         if (clientOfflineSessionMaxLifespanPerClient != null
             && !clientOfflineSessionMaxLifespanPerClient.trim().isEmpty()) {
           clientOfflineSessionMaxLifespan =
@@ -70,7 +83,7 @@ public class RedisSessionExpiration {
 
       long clientOfflineSessionIdleTimeout;
       String clientOfflineSessionIdleTimeoutPerClient =
-          client.getAttribute(OIDCConfigAttributes.CLIENT_OFFLINE_SESSION_IDLE_TIMEOUT);
+          clientAttribute(client, OIDCConfigAttributes.CLIENT_OFFLINE_SESSION_IDLE_TIMEOUT);
       if (clientOfflineSessionIdleTimeoutPerClient != null
           && !clientOfflineSessionIdleTimeoutPerClient.trim().isEmpty()) {
         clientOfflineSessionIdleTimeout =
@@ -91,7 +104,7 @@ public class RedisSessionExpiration {
     } else {
       long sessionExpires =
           timestampMillis
-              + (expirationData.getSsoSessionMaxLifespanRememberMe() > 0
+              + (rememberMe && expirationData.getSsoSessionMaxLifespanRememberMe() > 0
                   ? TimeAdapter.fromSecondsToMilliseconds(
                       expirationData.getSsoSessionMaxLifespanRememberMe())
                   : TimeAdapter.fromSecondsToMilliseconds(
@@ -99,7 +112,7 @@ public class RedisSessionExpiration {
 
       long clientSessionMaxLifespan;
       String clientSessionMaxLifespanPerClient =
-          client.getAttribute(OIDCConfigAttributes.CLIENT_SESSION_MAX_LIFESPAN);
+          clientAttribute(client, OIDCConfigAttributes.CLIENT_SESSION_MAX_LIFESPAN);
       if (clientSessionMaxLifespanPerClient != null
           && !clientSessionMaxLifespanPerClient.trim().isEmpty()) {
         clientSessionMaxLifespan =
@@ -117,7 +130,7 @@ public class RedisSessionExpiration {
 
       long expiration =
           timestampMillis
-              + (expirationData.getSsoSessionIdleTimeoutRememberMe() > 0
+              + (rememberMe && expirationData.getSsoSessionIdleTimeoutRememberMe() > 0
                   ? TimeAdapter.fromSecondsToMilliseconds(
                       expirationData.getSsoSessionIdleTimeoutRememberMe())
                   : TimeAdapter.fromSecondsToMilliseconds(
@@ -125,7 +138,7 @@ public class RedisSessionExpiration {
 
       long clientSessionIdleTimeout;
       String clientSessionIdleTimeoutPerClient =
-          client.getAttribute(OIDCConfigAttributes.CLIENT_SESSION_IDLE_TIMEOUT);
+          clientAttribute(client, OIDCConfigAttributes.CLIENT_SESSION_IDLE_TIMEOUT);
       if (clientSessionIdleTimeoutPerClient != null
           && !clientSessionIdleTimeoutPerClient.trim().isEmpty()) {
         clientSessionIdleTimeout =
@@ -143,6 +156,10 @@ public class RedisSessionExpiration {
 
       entity.setExpiration(Math.min(expiration, sessionExpires));
     }
+  }
+
+  private static String clientAttribute(ClientModel client, String name) {
+    return client == null ? null : client.getAttribute(name);
   }
 
   public static void setUserSessionExpiration(

@@ -90,7 +90,12 @@ public class RedisAuthenticationSessionAdapter extends MapEntity<AuthenticationS
 
   @Override
   public ClientModel getClient() {
-    return getRealm().getClientById(getString("clientUuid"));
+    RealmModel realm = getRealm();
+    return realm == null ? null : realm.getClientById(getClientUuid());
+  }
+
+  public String getClientUuid() {
+    return getString("clientUuid");
   }
 
   public void setClientUuid(String uuid) {

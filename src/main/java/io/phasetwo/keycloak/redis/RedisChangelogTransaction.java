@@ -183,6 +183,7 @@ public abstract class RedisChangelogTransaction<K extends Key, A extends MapEnti
     if (model == null) {
       model = adapterSupplier.newInstance(k);
       cache.put(k, model);
+      supersedePendingDelete(k, model);
     }
     return model;
   }
@@ -273,6 +274,38 @@ public abstract class RedisChangelogTransaction<K extends Key, A extends MapEnti
 
   public void addForSave(A model) {
     cache.put(model.getKey(), model);
+    supersedePendingDelete(model.getKey(), model);
+  }
+
+  /**
+   * Lets a create/save at {@code k} supersede a deletion already registered for that key, as a
+   * genuine <em>replace</em>.
+   *
+   * <p>Entity keys are deterministic, so "remove the old one, then create the new one" lands on the
+   * same key. Without this, {@link #commitImpl()} deletes any cached model whose key is in {@code
+   * toDelete} in preference to writing it, and the entity the caller was just handed silently never
+   * reaches Redis (issue #81).
+   *
+   * <p>Cancelling the delete alone would not be enough. Writes are partial — {@code hsetex} of the
+   * dirty fields under a CAS version — and a version mismatch rebases onto whatever is currently in
+   * Redis, so the successor would inherit every field the caller does not set, including the
+   * predecessor's refresh tokens. Adopting the predecessor's version and marking its fields deleted
+   * makes the write replace the hash rather than merge into it; any field the caller does set is
+   * un-deleted by {@code setField}.
+   */
+  private void supersedePendingDelete(K k, A replacement) {
+    A superseded = toDelete.remove(k);
+    if (superseded == null || superseded == replacement) return;
+    replacement.setVersion(superseded.getVersion());
+    Map<String, String> alreadySet = replacement.getFieldSnapshot();
+    for (String field : superseded.getFieldSnapshot().keySet()) {
+      // Never clear what the replacement already carries -- an adapter writes its own id in its
+      // constructor, so clearing it here would leave a hash with no id at all. Anything the caller
+      // sets after this point un-deletes itself via setField.
+      if (!"version".equals(field) && !alreadySet.containsKey(field)) {
+        replacement.removeField(field);
+      }
+    }
   }
 
   public void addForDelete(A model) {

@@ -91,7 +91,12 @@ public class RedisUserSessionProvider implements UserSessionProvider {
 
     RedisAuthenticatedClientSessionAdapter entity =
         createAuthenticatedClientSessionEntityInstance(
-            null, userSession.getId(), realm.getId(), client.getId(), isTransient(userSession));
+            null,
+            userSession.getId(),
+            realm.getId(),
+            client.getId(),
+            isTransient(userSession),
+            false);
 
     String started = String.valueOf(entity.getTimestamp());
     entity.setNote(AuthenticatedClientSessionModel.STARTED_AT_NOTE, started);
@@ -109,6 +114,20 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     return entity;
   }
 
+  /**
+   * Registers a client session for deletion at commit, addressed by its key.
+   *
+   * <p>Used by {@link RedisAuthenticatedClientSessionAdapter#detachFromUserSession()} for an
+   * orphan, which has no parent to delegate the removal to. Resolving the key through the
+   * transaction first matters: only the instance the transaction has cached is honoured at commit,
+   * and the caller is not necessarily holding it (issue #81).
+   */
+  void removeClientSession(RedisAuthenticatedClientSessionAdapter clientSession) {
+    RedisAuthenticatedClientSessionAdapter cached =
+        clientSessionTrx.getIfPresent(clientSession.getKey());
+    clientSessionTrx.addForDelete(cached != null ? cached : clientSession);
+  }
+
   /** Convert the UserSessionModel to a RedisUserSessionAdapter or load it from the transaction */
   private RedisUserSessionAdapter getUserSessionAdapter(UserSessionModel userSession) {
     if (userSession instanceof RedisUserSessionAdapter) {
@@ -116,24 +135,6 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     }
     // KC may wrap the adapter (e.g. UserSessionUtil$1 during token-exchange:v2)
     return getUserSessionById(userSession.getId());
-  }
-
-  /**
-   * Convert the AuthenticatedClientSessionModel to a RedisAuthenticatedClientSessionAdapter or load
-   * it from the transaction
-   */
-  private RedisAuthenticatedClientSessionAdapter getAuthenticatedClientSessionAdapter(
-      AuthenticatedClientSessionModel authenticatedClientSession) {
-    RedisAuthenticatedClientSessionAdapter authenticatedClientSessionEntity;
-    if (authenticatedClientSession instanceof RedisAuthenticatedClientSessionAdapter) {
-      authenticatedClientSessionEntity =
-          (RedisAuthenticatedClientSessionAdapter) authenticatedClientSession;
-    } else {
-      authenticatedClientSessionEntity =
-          clientSessionTrx.get(
-              new AuthenticatedClientSessionKey(authenticatedClientSession.getId()));
-    }
-    return authenticatedClientSessionEntity;
   }
 
   // xx
@@ -660,6 +661,23 @@ public class RedisUserSessionProvider implements UserSessionProvider {
         "createOfflineClientSession(%s, %s)%s",
         clientSession, offlineUserSession, getShortStackTrace());
 
+    RealmModel realm = clientSession.getRealm();
+    Optional<RedisUserSessionAdapter> userSessionEntity =
+        getOfflineUserSessionEntityStream(realm, offlineUserSession.getId()).findFirst();
+    if (userSessionEntity.isEmpty()) {
+      return null;
+    }
+    RedisUserSessionAdapter userSession = userSessionEntity.get();
+    String clientId = clientSession.getClient().getId();
+
+    // Remove the predecessor BEFORE creating the replacement, as the online path does. Keyed on the
+    // client UUID, not the client-session id. The replacement lands on the same deterministic key,
+    // and creating over a pending delete replaces the hash rather than merging into it -- so the
+    // successor cannot inherit the predecessor's refresh tokens (issue #81).
+    if (userSession.getAuthenticatedClientSessionByClient(clientId) != null) {
+      userSession.removeAuthenticatedClientSessions(List.of(clientId));
+    }
+
     RedisAuthenticatedClientSessionAdapter clientSessionEntity =
         createAuthenticatedClientSessionInstance(clientSession, offlineUserSession);
     int currentTime = Time.currentTime();
@@ -669,29 +687,14 @@ public class RedisUserSessionProvider implements UserSessionProvider {
         AuthenticatedClientSessionModel.USER_SESSION_STARTED_AT_NOTE,
         String.valueOf(offlineUserSession.getStarted()));
     clientSessionEntity.setTimestamp(currentTime);
-    RealmModel realm = clientSession.getRealm();
     setClientSessionExpiration(
         clientSessionEntity,
         SessionExpirationData.builder().realm(realm).build(),
         clientSession.getClient(),
         true);
 
-    Optional<RedisUserSessionAdapter> userSessionEntity =
-        getOfflineUserSessionEntityStream(realm, offlineUserSession.getId()).findFirst();
-    if (userSessionEntity.isPresent()) {
-      RedisUserSessionAdapter userSession = userSessionEntity.get();
-      String clientId = clientSession.getClient().getId();
-      var authenticatedClientSessions = userSession.getAuthenticatedClientSessionByClient(clientId);
-      if (authenticatedClientSessions != null) {
-        userSession.removeAuthenticatedClientSessions(List.of(authenticatedClientSessions.getId()));
-      }
-
-      userSession.addAuthenticatedClientSession(clientSessionEntity);
-
-      return clientSessionEntity;
-    }
-
-    return null;
+    userSession.addAuthenticatedClientSession(clientSessionEntity);
+    return clientSessionEntity;
   }
 
   // xx
@@ -906,7 +909,12 @@ public class RedisUserSessionProvider implements UserSessionProvider {
   }
 
   private RedisAuthenticatedClientSessionAdapter createAuthenticatedClientSessionEntityInstance(
-      String id, String userSessionId, String realmId, String clientId, boolean stateTransient) {
+      String id,
+      String userSessionId,
+      String realmId,
+      String clientId,
+      boolean stateTransient,
+      boolean offline) {
     int timestamp = Time.currentTime();
     id = id == null ? createAuthenticatedClientId(userSessionId, clientId) : id;
     RedisAuthenticatedClientSessionAdapter entity =
@@ -914,6 +922,10 @@ public class RedisUserSessionProvider implements UserSessionProvider {
     entity.setRealmId(realmId);
     entity.setClientUuid(clientId);
     entity.setParentId(userSessionId);
+    // Both create paths know the literal value, so store it instead of making every later read ask
+    // a parent user session that may be gone by then (issue #81). Set before setTimestamp(), which
+    // uses it to pick the expiration branch.
+    entity.setOffline(offline);
     entity.setTimestamp(timestamp);
     entity.setNotes(new HashMap<>());
     if (stateTransient) {
@@ -934,7 +946,8 @@ public class RedisUserSessionProvider implements UserSessionProvider {
             offlineUserSession.getId(),
             clientSession.getRealm().getId(),
             clientSession.getClient().getId(),
-            isTransient(offlineUserSession));
+            isTransient(offlineUserSession),
+            true);
     entity.setAction(clientSession.getAction());
     entity.setProtocol(clientSession.getProtocol());
     entity.setNotes(new HashMap<>(clientSession.getNotes()));
